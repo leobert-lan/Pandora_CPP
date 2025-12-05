@@ -17,7 +17,7 @@ class PandoraBoxAdapter : public Node<PandoraBoxAdapter<T>>, public DataAdapter<
   PandoraBoxAdapter() = default;
   ~PandoraBoxAdapter() override = default;
 
-  int GetDataCount() const override = 0;
+  [[nodiscard]] int GetDataCount() const override = 0;
   T* GetDataByIndex(int index) override = 0;
   void ClearAllData() override = 0;
   void Add(const T& item) override = 0;
@@ -47,7 +47,7 @@ class PandoraBoxAdapter : public Node<PandoraBoxAdapter<T>>, public DataAdapter<
     // TODO: 检查别名唯一性
     alias_ = alias;
   }
-  std::string GetAlias() const { return alias_; }
+  [[nodiscard]] std::string GetAlias() const { return alias_; }
 
  protected:
   std::string alias_;

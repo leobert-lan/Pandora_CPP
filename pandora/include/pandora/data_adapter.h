@@ -8,7 +8,7 @@ namespace pandora {
 template <typename T>
 class DataAdapter {
  public:
-  virtual int GetDataCount() const = 0;
+  [[nodiscard]] virtual int GetDataCount() const = 0;
   virtual T* GetDataByIndex(int index) = 0;
   virtual void ClearAllData() = 0;
   virtual void Add(const T& item) = 0;

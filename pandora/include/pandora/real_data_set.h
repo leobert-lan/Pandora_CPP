@@ -11,7 +11,7 @@ template <typename T>
 class RealDataSet : public PandoraBoxAdapter<T> {
  public:
   RealDataSet() = default;
-  int GetDataCount() const override { return static_cast<int>(data_.size()); }
+  [[nodiscard]] int GetDataCount() const override { return static_cast<int>(data_.size()); }
   T* GetDataByIndex(int index) override {
     if (index < 0 || index >= static_cast<int>(data_.size())) return nullptr;
     return &data_[index];
@@ -47,11 +47,11 @@ class RealDataSet : public PandoraBoxAdapter<T> {
     return static_cast<int>(std::distance(data_.begin(), it));
   }
   // Node接口实现
-  int GetGroupIndex() const override { return group_index_; }
+  [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
   void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) override {
     throw PandoraException("RealDataSet does not support AddChild");
   }
-  bool HasBindToParent() const override { return parent_ != nullptr; }
+  [[nodiscard]] bool HasBindToParent() const override { return parent_ != nullptr; }
   void RemoveFromOriginalParent() override {
     if (parent_) {
       parent_->RemoveChild(this);

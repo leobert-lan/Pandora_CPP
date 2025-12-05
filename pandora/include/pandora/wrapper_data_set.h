@@ -12,7 +12,7 @@ template <typename T>
 class WrapperDataSet : public PandoraBoxAdapter<T> {
  public:
   WrapperDataSet() = default;
-  int GetDataCount() const override {
+  [[nodiscard]] int GetDataCount() const override {
     int count = 0;
     for (const auto& sub : subs_) {
       if (sub) count += sub->GetDataCount();
@@ -99,8 +99,8 @@ class WrapperDataSet : public PandoraBoxAdapter<T> {
     auto it = std::remove_if(subs_.begin(), subs_.end(), [sub](const std::unique_ptr<PandoraBoxAdapter<T>>& ptr) { return ptr.get() == sub; });
     subs_.erase(it, subs_.end());
   }
-  int GetGroupIndex() const override { return group_index_; }
-  bool HasBindToParent() const override
+  [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
+  [[nodiscard]] bool HasBindToParent() const override
   {
     return false;
   }
