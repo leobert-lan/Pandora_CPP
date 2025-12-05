@@ -16,31 +16,60 @@ class RealDataSet : public PandoraBoxAdapter<T> {
     if (index < 0 || index >= static_cast<int>(data_.size())) return nullptr;
     return &data_[index];
   }
-  void ClearAllData() override { data_.clear(); }
-  void Add(const T& item) override { data_.push_back(item); }
+
+  void ClearAllData() override {
+    OnBeforeChanged();
+    data_.clear();
+    OnAfterChanged();
+  }
+
+  void Add(const T& item) override {
+    OnBeforeChanged();
+    data_.push_back(item);
+    OnAfterChanged();
+  }
+
   void Add(int pos, const T& item) override {
     if (pos < 0 || pos > static_cast<int>(data_.size())) return;
+    OnBeforeChanged();
     data_.insert(data_.begin() + pos, item);
+    OnAfterChanged();
   }
+
   void AddAll(const std::vector<T>& collection) override {
+    OnBeforeChanged();
     data_.insert(data_.end(), collection.begin(), collection.end());
+    OnAfterChanged();
   }
+
   void Remove(const T& item) override {
+    OnBeforeChanged();
     auto it = std::find(data_.begin(), data_.end(), item);
     if (it != data_.end()) data_.erase(it);
+    OnAfterChanged();
   }
+
   void RemoveAtPos(int position) override {
     if (position < 0 || position >= static_cast<int>(data_.size())) return;
+    OnBeforeChanged();
     data_.erase(data_.begin() + position);
+    OnAfterChanged();
   }
+
   bool ReplaceAtPosIfExist(int position, const T& item) override {
     if (position < 0 || position >= static_cast<int>(data_.size())) return false;
+    OnBeforeChanged();
     data_[position] = item;
+    OnAfterChanged();
     return true;
   }
+
   void SetData(const std::vector<T>& collection) override {
+    OnBeforeChanged();
     data_ = collection;
+    OnAfterChanged();
   }
+
   int IndexOf(const T& item) const override {
     auto it = std::find(data_.begin(), data_.end(), item);
     if (it == data_.end()) return -1;
@@ -49,7 +78,7 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   // Node接口实现
   [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
   void SetGroupIndex(int group_index) override { group_index_ = group_index; }
-
+  
   void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) override {
     throw PandoraException("RealDataSet does not support AddChild");
   }
@@ -63,23 +92,91 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   void RemoveChild(PandoraBoxAdapter<T>* sub) override {
     throw PandoraException("RealDataSet does not support RemoveChild");
   }
-
+  
   // Index management
   [[nodiscard]] int GetStartIndex() const override { return start_index_; }
   void SetStartIndex(int start_index) override { start_index_ = start_index; }
-
+  
   // Parent-child relationship notifications
   void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) override {
     parent_ = parent;
   }
-
+  
   void NotifyHasRemoveFromParent() override {
     parent_ = nullptr;
   }
 
+  // Get parent
+  PandoraBoxAdapter<T>* GetParent() override { return parent_; }
+
+  // Alias support
+  PandoraBoxAdapter<T>* FindByAlias(const std::string& target_alias) override {
+    if (target_alias.empty()) return nullptr;
+    if (this->GetAlias() == target_alias) return this;
+    return nullptr;
+  }
+
+  bool IsAliasConflict(const std::string& alias) override {
+    return this->GetAlias() == alias;
+  }
+
+  // Transaction support
+  void StartTransaction() override {
+    use_transaction_ = true;
+    Snapshot();
+  }
+
+  void EndTransaction() override {
+    use_transaction_ = false;
+    // Notify changes if needed (could add diff calculation here)
+  }
+
+  void EndTransactionSilently() override {
+    use_transaction_ = false;
+  }
+
+ protected:
+  void OnBeforeChanged() override {
+    if (!InTransaction()) {
+      Snapshot();
+    }
+    if (parent_) {
+      parent_->OnBeforeChanged();
+    }
+  }
+
+  void OnAfterChanged() override {
+    if (parent_) {
+      parent_->OnAfterChanged();
+    }
+    if (!InTransaction()) {
+      // Notify changes (could add diff calculation here)
+    }
+  }
+
+  [[nodiscard]] bool InTransaction() const override {
+    return use_transaction_ || IsParentInTransaction();
+  }
+
+  void Restore() override {
+    data_.clear();
+    data_ = old_data_;
+  }
+
  private:
+  void Snapshot() {
+    old_data_.clear();
+    old_data_ = data_;
+  }
+
+  [[nodiscard]] bool IsParentInTransaction() const {
+    return parent_ != nullptr && parent_->InTransaction();
+  }
+
   std::vector<T> data_;
-  int group_index_ = Node<T>::kNoGroupIndex;
+  std::vector<T> old_data_;  // Snapshot for transaction rollback
+  bool use_transaction_ = false;
+  int group_index_ = Node<PandoraBoxAdapter<T>>::kNoGroupIndex;
   int start_index_ = 0;
   PandoraBoxAdapter<T>* parent_ = nullptr;
 };

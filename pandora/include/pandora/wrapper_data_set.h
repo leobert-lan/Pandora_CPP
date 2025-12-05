@@ -130,7 +130,7 @@ class WrapperDataSet : public PandoraBoxAdapter<T> {
 
   [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
 
-  void SetGroupIndex(int group_index) { group_index_ = group_index; }
+  void SetGroupIndex(int group_index) override { group_index_ = group_index; }
 
   [[nodiscard]] bool HasBindToParent() const override {
     return parent_ != nullptr;
@@ -143,21 +143,117 @@ class WrapperDataSet : public PandoraBoxAdapter<T> {
     }
   }
 
-  void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) {
+  void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) override {
     parent_ = parent;
   }
 
-  void NotifyHasRemoveFromParent() {
+  void NotifyHasRemoveFromParent() override {
     parent_ = nullptr;
   }
 
-  [[nodiscard]] int GetStartIndex() const { return start_index_; }
+  [[nodiscard]] int GetStartIndex() const override { return start_index_; }
 
-  void SetStartIndex(int start_index) { start_index_ = start_index; }
+  void SetStartIndex(int start_index) override { start_index_ = start_index; }
+
+  // Get parent
+  PandoraBoxAdapter<T>* GetParent() override { return parent_; }
+
+  // Alias support
+  PandoraBoxAdapter<T>* FindByAlias(const std::string& target_alias) override {
+    if (target_alias.empty()) return nullptr;
+    if (this->GetAlias() == target_alias) return this;
+
+    // Search in children
+    for (auto& sub : subs_) {
+      if (sub) {
+        PandoraBoxAdapter<T>* result = sub->FindByAlias(target_alias);
+        if (result) return result;
+      }
+    }
+    return nullptr;
+  }
+
+  bool IsAliasConflict(const std::string& alias) override {
+    if (this->GetAlias() == alias) return true;
+
+    // Check in children
+    for (auto& sub : subs_) {
+      if (sub && sub->IsAliasConflict(alias)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Transaction support
+  void StartTransaction() override {
+    use_transaction_ = true;
+    // Propagate to children
+    for (auto& sub : subs_) {
+      if (sub) sub->StartTransaction();
+    }
+  }
+
+  void EndTransaction() override {
+    use_transaction_ = false;
+    // Propagate to children
+    for (auto& sub : subs_) {
+      if (sub) sub->EndTransaction();
+    }
+  }
+
+  void EndTransactionSilently() override {
+    use_transaction_ = false;
+    // Propagate to children
+    for (auto& sub : subs_) {
+      if (sub) sub->EndTransactionSilently();
+    }
+  }
+
+ protected:
+  void OnBeforeChanged() override {
+    if (!InTransaction()) {
+      // Snapshot children
+      for (auto& sub : subs_) {
+        if (sub) sub->OnBeforeChanged();
+      }
+    }
+    if (parent_) {
+      parent_->OnBeforeChanged();
+    }
+  }
+
+  void OnAfterChanged() override {
+    if (parent_) {
+      parent_->OnAfterChanged();
+    }
+    if (!InTransaction()) {
+      // Notify changes
+      for (auto& sub : subs_) {
+        if (sub) sub->OnAfterChanged();
+      }
+    }
+  }
+
+  [[nodiscard]] bool InTransaction() const override {
+    return use_transaction_ || IsParentInTransaction();
+  }
+
+  void Restore() override {
+    // Restore all children
+    for (auto& sub : subs_) {
+      if (sub) sub->Restore();
+    }
+  }
 
  private:
+  [[nodiscard]] bool IsParentInTransaction() const {
+    return parent_ != nullptr && parent_->InTransaction();
+  }
+
   std::vector<std::unique_ptr<PandoraBoxAdapter<T>>> subs_;
-  int group_index_ = Node<T>::kNoGroupIndex;
+  bool use_transaction_ = false;
+  int group_index_ = Node<PandoraBoxAdapter<T>>::kNoGroupIndex;
   int start_index_ = 0;
   PandoraBoxAdapter<T>* parent_ = nullptr;
 };

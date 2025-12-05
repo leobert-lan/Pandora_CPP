@@ -44,21 +44,53 @@ class PandoraBoxAdapter : public Node<PandoraBoxAdapter<T>>, public DataAdapter<
   }
 
   void SetAlias(const std::string& alias) {
-    // TODO: 检查别名唯一性
+    // Find root adapter
+    PandoraBoxAdapter<T>* check_root = this;
+    while (check_root->HasBindToParent()) {
+      PandoraBoxAdapter<T>* parent = check_root->GetParent();
+      if (!parent) break;
+      check_root = parent;
+    }
+
+    // Check alias uniqueness in the tree
+    if (check_root->IsAliasConflict(alias)) {
+      throw PandoraException("Alias conflict: " + alias);
+    }
     alias_ = alias;
   }
+
   [[nodiscard]] std::string GetAlias() const { return alias_; }
+
+  // Find adapter by alias in this tree
+  virtual PandoraBoxAdapter<T>* FindByAlias(const std::string& target_alias) = 0;
+
+  // Check if alias conflicts with any node in this tree
+  virtual bool IsAliasConflict(const std::string& alias) = 0;
 
   // Index and group management
   [[nodiscard]] virtual int GetStartIndex() const = 0;
   virtual void SetStartIndex(int start_index) = 0;
   virtual void SetGroupIndex(int group_index) = 0;
-
+  
   // Parent-child relationship notifications
   virtual void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) = 0;
   virtual void NotifyHasRemoveFromParent() = 0;
 
- protected:
+  // Get parent adapter
+  virtual PandoraBoxAdapter<T>* GetParent() = 0;
+
+  // Transaction support
+  virtual void StartTransaction() = 0;
+  virtual void EndTransaction() = 0;
+  virtual void EndTransactionSilently() = 0;
+
+ // protected:
+  // Hook methods for data changes
+  virtual void OnBeforeChanged() = 0;
+  virtual void OnAfterChanged() = 0;
+  [[nodiscard]] virtual bool InTransaction() const = 0;
+  virtual void Restore() = 0;
+
   std::string alias_;
 };
 

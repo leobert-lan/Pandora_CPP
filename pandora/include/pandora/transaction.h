@@ -12,18 +12,30 @@ class Transaction {
  public:
   using Function = std::function<void(PandoraBoxAdapter<T>*)>;
   explicit Transaction(PandoraBoxAdapter<T>* adapter) : adapter_(adapter) {}
+
   void Apply(const Function& func) {
-    // TODO: 快照与恢复机制
+    Prepare();
     try {
-      adapter_->StartTransaction();
       func(adapter_);
-      adapter_->EndTransaction();
+    } catch (const std::exception& e) {
+      Logger::Println(Logger::ERROR, "Transaction",
+                     std::string("transaction failure: ") + e.what());
+      Restore();
     } catch (...) {
       Logger::Println(Logger::ERROR, "Transaction", "transaction failure");
-      adapter_->Restore();
+      Restore();
     }
   }
+
  private:
+  void Prepare() {
+    adapter_->StartTransaction();
+  }
+
+  void Restore() {
+    adapter_->Restore();
+  }
+
   PandoraBoxAdapter<T>* adapter_;
 };
 
