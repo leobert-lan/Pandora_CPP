@@ -49,6 +49,15 @@ class PandoraBoxAdapter : public Node<PandoraBoxAdapter<T>>, public DataAdapter<
   }
   [[nodiscard]] std::string GetAlias() const { return alias_; }
 
+  // Index and group management
+  [[nodiscard]] virtual int GetStartIndex() const = 0;
+  virtual void SetStartIndex(int start_index) = 0;
+  virtual void SetGroupIndex(int group_index) = 0;
+
+  // Parent-child relationship notifications
+  virtual void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) = 0;
+  virtual void NotifyHasRemoveFromParent() = 0;
+
  protected:
   std::string alias_;
 };

@@ -48,6 +48,8 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   }
   // Node接口实现
   [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
+  void SetGroupIndex(int group_index) override { group_index_ = group_index; }
+
   void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) override {
     throw PandoraException("RealDataSet does not support AddChild");
   }
@@ -62,9 +64,23 @@ class RealDataSet : public PandoraBoxAdapter<T> {
     throw PandoraException("RealDataSet does not support RemoveChild");
   }
 
+  // Index management
+  [[nodiscard]] int GetStartIndex() const override { return start_index_; }
+  void SetStartIndex(int start_index) override { start_index_ = start_index; }
+
+  // Parent-child relationship notifications
+  void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) override {
+    parent_ = parent;
+  }
+
+  void NotifyHasRemoveFromParent() override {
+    parent_ = nullptr;
+  }
+
  private:
   std::vector<T> data_;
   int group_index_ = Node<T>::kNoGroupIndex;
+  int start_index_ = 0;
   PandoraBoxAdapter<T>* parent_ = nullptr;
 };
 
