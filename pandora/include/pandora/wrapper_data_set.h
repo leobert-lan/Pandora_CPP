@@ -210,6 +210,10 @@ class WrapperDataSet : public PandoraBoxAdapter<T> {
     }
   }
 
+  [[nodiscard]] bool InTransaction() const override {
+    return use_transaction_ || IsParentInTransaction();
+  }
+
  protected:
   void OnBeforeChanged() override {
     if (!InTransaction()) {
@@ -233,10 +237,6 @@ class WrapperDataSet : public PandoraBoxAdapter<T> {
         if (sub) sub->OnAfterChanged();
       }
     }
-  }
-
-  [[nodiscard]] bool InTransaction() const override {
-    return use_transaction_ || IsParentInTransaction();
   }
 
   void Restore() override {

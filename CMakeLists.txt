@@ -35,6 +35,7 @@ enable_testing()
 
 # 测试目标
 file(GLOB TEST_SOURCES pandora/tests/*.cpp)
-add_executable(pandora_tests ${TEST_SOURCES})
+add_executable(pandora_tests ${TEST_SOURCES}
+        pandora/tests/Global.h)
 target_link_libraries(pandora_tests PRIVATE pandora gtest_main)
 add_test(NAME PandoraUnitTests COMMAND pandora_tests)

@@ -75,7 +75,52 @@ class RealDataSet : public PandoraBoxAdapter<T> {
     if (it == data_.end()) return -1;
     return static_cast<int>(std::distance(data_.begin(), it));
   }
-  // Node接口实现
+
+  // TODO: Add data modification convenience methods
+  //
+  // template<typename UpdateFunc>
+  // bool UpdateAt(int index, UpdateFunc&& updater) {
+  //   if (index < 0 || index >= static_cast<int>(data_.size())) return false;
+  //   OnBeforeChanged();
+  //   updater(data_[index]);
+  //   OnAfterChanged();
+  //   return true;
+  // }
+  //
+  // template<typename UpdateFunc>
+  // void UpdateAll(UpdateFunc&& updater) {
+  //   OnBeforeChanged();
+  //   for (auto& item : data_) {
+  //     updater(item);
+  //   }
+  //   OnAfterChanged();
+  // }
+  //
+  // template<typename PredicateFunc, typename UpdateFunc>
+  // int UpdateIf(PredicateFunc&& predicate, UpdateFunc&& updater) {
+  //   int count = 0;
+  //   OnBeforeChanged();
+  //   for (auto& item : data_) {
+  //     if (predicate(item)) {
+  //       updater(item);
+  //       ++count;
+  //     }
+  //   }
+  //   OnAfterChanged();
+  //   return count;
+  // }
+  //
+  // T* GetMutableDataByIndex(int index) {
+  //   if (index < 0 || index >= static_cast<int>(data_.size())) return nullptr;
+  //   return &data_[index];
+  // }
+  //
+  // void NotifyDataChanged() {
+  //   OnBeforeChanged();
+  //   OnAfterChanged();
+  // }
+
+  // Node interface implementation
   [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
   void SetGroupIndex(int group_index) override { group_index_ = group_index; }
   
@@ -135,6 +180,10 @@ class RealDataSet : public PandoraBoxAdapter<T> {
     use_transaction_ = false;
   }
 
+  [[nodiscard]] bool InTransaction() const override {
+    return use_transaction_ || IsParentInTransaction();
+  }
+
  protected:
   void OnBeforeChanged() override {
     if (!InTransaction()) {
@@ -152,10 +201,6 @@ class RealDataSet : public PandoraBoxAdapter<T> {
     if (!InTransaction()) {
       // Notify changes (could add diff calculation here)
     }
-  }
-
-  [[nodiscard]] bool InTransaction() const override {
-    return use_transaction_ || IsParentInTransaction();
   }
 
   void Restore() override {
