@@ -43,6 +43,7 @@ class PandoraBoxAdapter : public Node<PandoraBoxAdapter<T>>, public DataAdapter<
     }
   }
 
+  /// 设置别名，冲突检测仅向下，不向上检查
   void SetAlias(const std::string& alias) {
     // Find root adapter
     PandoraBoxAdapter<T>* check_root = this;

@@ -134,19 +134,16 @@ TEST(AliasTest, SetAliasWithConflictThrows) {
   wrapper->SetAlias("wrapper");
 
   auto dataset1 = std::make_unique<RealDataSet<int>>();
-  dataset1->SetAlias("child1");
   wrapper->AddChild(std::move(dataset1));
-
-  auto dataset2 = std::make_unique<RealDataSet<int>>();
+  dataset1->SetAlias("child1");
 
   // Adding child2 to wrapper, then trying to set conflicting alias should throw
+  auto dataset2 = std::make_unique<RealDataSet<int>>();
   wrapper->AddChild(std::move(dataset2));
 
-  // Get the last child to set conflicting alias
-  // Note: In real usage, you'd need to traverse to get the child
-  // For this test, we'll create a new dataset and test before adding
-  auto dataset3 = std::make_unique<RealDataSet<int>>();
-  EXPECT_THROW(dataset3->SetAlias("wrapper"), PandoraException);
+  // EXPECT_THROW(wrapper->SetAlias("child1"), PandoraException);
+  // wrapper->
+  EXPECT_THROW(dataset2->SetAlias("child1"), PandoraException);
 }
 
 TEST(AliasTest, FindByAliasInTree) {
