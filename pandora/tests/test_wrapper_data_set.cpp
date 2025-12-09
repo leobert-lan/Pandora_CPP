@@ -9,22 +9,27 @@ using namespace pandora;
 TEST(WrapperDataSetTest, AggregateOperations) {
 
     auto ds1 = std::make_unique<RealDataSet<TestData>>();
-
-    auto test1 = TestData(1);
-    auto test2 = TestData(2);
-    ds1->Add(test1);
-    ds1->Add(test2);
+    auto ds1Ptr = ds1.get();
 
     auto ds2 = std::make_unique<RealDataSet<TestData>>();
-    auto test3 = TestData(3);
-    auto test4 = TestData(4);
-
-    ds2->Add(test3);
-    ds2->Add(test4);
+    auto ds2Ptr = ds2.get();
 
     WrapperDataSet<TestData> wrapper;
     wrapper.AddChild(std::move(ds1));
     wrapper.AddChild(std::move(ds2));
+
+
+    auto test1 = TestData(1);
+    auto test2 = TestData(2);
+    ds1Ptr->Add(test1);
+    ds1Ptr->Add(test2);
+
+    auto test3 = TestData(3);
+    auto test4 = TestData(4);
+
+    ds2Ptr->Add(test3);
+    ds2Ptr->Add(test4);
+
 
     EXPECT_EQ(wrapper.GetDataCount(), 4);
     EXPECT_EQ(wrapper.GetDataByIndex(0)->value, 1);

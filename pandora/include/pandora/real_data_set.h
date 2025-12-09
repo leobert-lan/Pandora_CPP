@@ -123,7 +123,7 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   // Node interface implementation
   [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
   void SetGroupIndex(int group_index) override { group_index_ = group_index; }
-  
+
   void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) override {
     throw PandoraException("RealDataSet does not support AddChild");
   }
@@ -137,16 +137,16 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   void RemoveChild(PandoraBoxAdapter<T>* sub) override {
     throw PandoraException("RealDataSet does not support RemoveChild");
   }
-  
+
   // Index management
   [[nodiscard]] int GetStartIndex() const override { return start_index_; }
   void SetStartIndex(int start_index) override { start_index_ = start_index; }
-  
+
   // Parent-child relationship notifications
   void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) override {
     parent_ = parent;
   }
-  
+
   void NotifyHasRemoveFromParent() override {
     parent_ = nullptr;
   }
@@ -186,6 +186,8 @@ class RealDataSet : public PandoraBoxAdapter<T> {
 
  protected:
   void OnBeforeChanged() override {
+    if (is_snapshotting_) return;  // Prevent recursive calls
+
     if (!InTransaction()) {
       Snapshot();
     }
@@ -204,14 +206,32 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   }
 
   void Restore() override {
-    data_.clear();
-    data_ = old_data_;
+    if (is_snapshotting_) return;  // Prevent issues during restore
+    is_snapshotting_ = true;
+    if (old_data_.size() == 0)
+    {
+      data_.clear();
+    }
+    else
+    {
+      data_.assign(old_data_.begin(), old_data_.end());
+    }
+    is_snapshotting_ = false;
   }
 
  private:
   void Snapshot() {
-    old_data_.clear();
-    old_data_ = data_;
+    if (is_snapshotting_) return;  // Already snapshotting
+    is_snapshotting_ = true;
+    if (data_.size() == 0)
+    {
+      old_data_.clear();
+    }
+    else
+    {
+      old_data_.assign(data_.begin(), data_.end());
+    }
+    is_snapshotting_ = false;
   }
 
   [[nodiscard]] bool IsParentInTransaction() const {
@@ -221,6 +241,7 @@ class RealDataSet : public PandoraBoxAdapter<T> {
   std::vector<T> data_;
   std::vector<T> old_data_;  // Snapshot for transaction rollback
   bool use_transaction_ = false;
+  bool is_snapshotting_ = false;  // Flag to prevent recursive snapshot calls
   int group_index_ = Node<PandoraBoxAdapter<T>>::kNoGroupIndex;
   int start_index_ = 0;
   PandoraBoxAdapter<T>* parent_ = nullptr;

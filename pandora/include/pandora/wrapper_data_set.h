@@ -217,7 +217,7 @@ class WrapperDataSet : public PandoraBoxAdapter<T> {
  protected:
   void OnBeforeChanged() override {
     if (!InTransaction()) {
-      // Snapshot children
+      // Snapshot children todo stackoverflow！！没有意义！！
       for (auto& sub : subs_) {
         if (sub) sub->OnBeforeChanged();
       }

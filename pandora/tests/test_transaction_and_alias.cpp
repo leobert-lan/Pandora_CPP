@@ -3,41 +3,42 @@
 #include "pandora/wrapper_data_set.h"
 #include "pandora/transaction.h"
 #include "pandora/pandora_exception.h"
+#include "Global.h"
 
 using namespace pandora;
 
 // Test transaction mechanism
 TEST(TransactionTest, BasicTransaction) {
-  RealDataSet<int> dataset;
-  dataset.Add(1);
-  dataset.Add(2);
-  dataset.Add(3);
+  RealDataSet<TestData> dataset;
+  dataset.Add(TestData(1));
+  dataset.Add(TestData(2));
+  dataset.Add(TestData(3));
 
-  Transaction<int> transaction(&dataset);
+  Transaction<TestData> transaction(&dataset);
 
   // Apply transaction successfully
-  transaction.Apply([](PandoraBoxAdapter<int>* adapter) {
-    adapter->Add(4);
-    adapter->Add(5);
+  transaction.Apply([](PandoraBoxAdapter<TestData>* adapter) {
+    adapter->Add(TestData(4));
+    adapter->Add(TestData(5));
   });
 
   EXPECT_EQ(5, dataset.GetDataCount());
-  EXPECT_EQ(4, *dataset.GetDataByIndex(3));
-  EXPECT_EQ(5, *dataset.GetDataByIndex(4));
+  EXPECT_EQ(4, dataset.GetDataByIndex(3)->value);
+  EXPECT_EQ(5, dataset.GetDataByIndex(4)->value);
 }
 
 TEST(TransactionTest, TransactionRollback) {
-  RealDataSet<int> dataset;
-  dataset.Add(1);
-  dataset.Add(2);
-  dataset.Add(3);
+  RealDataSet<TestData> dataset;
+  dataset.Add(TestData(1));
+  dataset.Add(TestData(2));
+  dataset.Add(TestData(3));
 
-  Transaction<int> transaction(&dataset);
+  Transaction<TestData> transaction(&dataset);
 
   // Apply transaction that throws exception
   try {
-    transaction.Apply([](PandoraBoxAdapter<int>* adapter) {
-      adapter->Add(4);
+    transaction.Apply([](PandoraBoxAdapter<TestData>* adapter) {
+      adapter->Add(TestData(4));
       throw std::runtime_error("Test exception");
     });
   } catch (...) {
@@ -49,14 +50,14 @@ TEST(TransactionTest, TransactionRollback) {
 }
 
 TEST(TransactionTest, ManualTransaction) {
-  RealDataSet<int> dataset;
-  dataset.Add(1);
-  dataset.Add(2);
+  RealDataSet<TestData> dataset;
+  dataset.Add(TestData(1));
+  dataset.Add(TestData(2));
 
   // Start transaction manually
   dataset.StartTransaction();
-  dataset.Add(3);
-  dataset.Add(4);
+  dataset.Add(TestData(3));
+  dataset.Add(TestData(4));
   EXPECT_TRUE(dataset.InTransaction());
 
   // End transaction
@@ -67,12 +68,12 @@ TEST(TransactionTest, ManualTransaction) {
 }
 
 TEST(TransactionTest, SilentTransaction) {
-  RealDataSet<int> dataset;
-  dataset.Add(1);
-  dataset.Add(2);
+  RealDataSet<TestData> dataset;
+  dataset.Add(TestData(1));
+  dataset.Add(TestData(2));
 
   dataset.StartTransaction();
-  dataset.Add(3);
+  dataset.Add(TestData(3));
 
   // End transaction silently (no notification)
   dataset.EndTransactionSilently();
@@ -83,14 +84,14 @@ TEST(TransactionTest, SilentTransaction) {
 
 // Test alias mechanism
 TEST(AliasTest, SetAndGetAlias) {
-  RealDataSet<int> dataset;
+  RealDataSet<TestData> dataset;
   dataset.SetAlias("myDataset");
 
   EXPECT_EQ("myDataset", dataset.GetAlias());
 }
 
 TEST(AliasTest, FindByAlias) {
-  RealDataSet<int> dataset;
+  RealDataSet<TestData> dataset;
   dataset.SetAlias("test");
 
   auto* found = dataset.FindByAlias("test");
@@ -102,7 +103,7 @@ TEST(AliasTest, FindByAlias) {
 }
 
 TEST(AliasTest, AliasConflictInSingleNode) {
-  RealDataSet<int> dataset;
+  RealDataSet<TestData> dataset;
   dataset.SetAlias("test");
 
   EXPECT_TRUE(dataset.IsAliasConflict("test"));
@@ -110,13 +111,13 @@ TEST(AliasTest, AliasConflictInSingleNode) {
 }
 
 TEST(AliasTest, AliasConflictInTree) {
-  auto wrapper = std::make_unique<WrapperDataSet<int>>();
+  auto wrapper = std::make_unique<WrapperDataSet<TestData>>();
   wrapper->SetAlias("wrapper");
 
-  auto dataset1 = std::make_unique<RealDataSet<int>>();
+  auto dataset1 = std::make_unique<RealDataSet<TestData>>();
   dataset1->SetAlias("child1");
 
-  auto dataset2 = std::make_unique<RealDataSet<int>>();
+  auto dataset2 = std::make_unique<RealDataSet<TestData>>();
   dataset2->SetAlias("child2");
 
   wrapper->AddChild(std::move(dataset1));
@@ -130,17 +131,17 @@ TEST(AliasTest, AliasConflictInTree) {
 }
 
 TEST(AliasTest, SetAliasWithConflictThrows) {
-  auto wrapper = std::make_unique<WrapperDataSet<int>>();
+  auto wrapper = std::make_unique<WrapperDataSet<TestData>>();
   wrapper->SetAlias("wrapper");
 
-  auto dataset1 = std::make_unique<RealDataSet<int>>();
+  auto dataset1 = std::make_unique<RealDataSet<TestData>>();
   // Save raw pointer before moving
   auto* dataset1Ptr = dataset1.get();
   wrapper->AddChild(std::move(dataset1));
   dataset1Ptr->SetAlias("child1");
 
   // Adding child2 to wrapper, then trying to set conflicting alias should throw
-  auto dataset2 = std::make_unique<RealDataSet<int>>();
+  auto dataset2 = std::make_unique<RealDataSet<TestData>>();
   auto* dataset2Ptr = dataset2.get();
   wrapper->AddChild(std::move(dataset2));
 
@@ -149,16 +150,16 @@ TEST(AliasTest, SetAliasWithConflictThrows) {
 }
 
 TEST(AliasTest, FindByAliasInTree) {
-  auto wrapper = std::make_unique<WrapperDataSet<int>>();
+  auto wrapper = std::make_unique<WrapperDataSet<TestData>>();
   wrapper->SetAlias("root");
 
-  auto dataset1 = std::make_unique<RealDataSet<int>>();
+  auto dataset1 = std::make_unique<RealDataSet<TestData>>();
   dataset1->SetAlias("child1");
-  dataset1->Add(100);
+  dataset1->Add(TestData(100));
 
-  auto dataset2 = std::make_unique<RealDataSet<int>>();
+  auto dataset2 = std::make_unique<RealDataSet<TestData>>();
   dataset2->SetAlias("child2");
-  dataset2->Add(200);
+  dataset2->Add(TestData(200));
 
   wrapper->AddChild(std::move(dataset1));
   wrapper->AddChild(std::move(dataset2));
@@ -171,12 +172,12 @@ TEST(AliasTest, FindByAliasInTree) {
   // Find child1
   found = wrapper->FindByAlias("child1");
   EXPECT_NE(nullptr, found);
-  EXPECT_EQ(100, *found->GetDataByIndex(0));
+  EXPECT_EQ(100, found->GetDataByIndex(0)->value);
 
   // Find child2
   found = wrapper->FindByAlias("child2");
   EXPECT_NE(nullptr, found);
-  EXPECT_EQ(200, *found->GetDataByIndex(0));
+  EXPECT_EQ(200, found->GetDataByIndex(0)->value);
 
   // Not found
   found = wrapper->FindByAlias("nonexistent");
@@ -185,8 +186,8 @@ TEST(AliasTest, FindByAliasInTree) {
 
 // Test transaction with parent-child relationship
 TEST(TransactionTest, ParentChildTransaction) {
-  auto wrapper = std::make_unique<WrapperDataSet<int>>();
-  auto dataset = std::make_unique<RealDataSet<int>>();
+  auto wrapper = std::make_unique<WrapperDataSet<TestData>>();
+  auto dataset = std::make_unique<RealDataSet<TestData>>();
 
   auto* datasetPtr = dataset.get();
   wrapper->AddChild(std::move(dataset));
@@ -196,8 +197,8 @@ TEST(TransactionTest, ParentChildTransaction) {
   EXPECT_TRUE(wrapper->InTransaction());
   EXPECT_TRUE(datasetPtr->InTransaction());  // Child should be in transaction too
 
-  datasetPtr->Add(1);
-  datasetPtr->Add(2);
+  datasetPtr->Add(TestData(1));
+  datasetPtr->Add(TestData(2));
 
   wrapper->EndTransaction();
   EXPECT_FALSE(wrapper->InTransaction());
@@ -207,8 +208,8 @@ TEST(TransactionTest, ParentChildTransaction) {
 }
 
 TEST(TransactionTest, ChildInheritsParentTransaction) {
-  auto wrapper = std::make_unique<WrapperDataSet<int>>();
-  auto dataset = std::make_unique<RealDataSet<int>>();
+  auto wrapper = std::make_unique<WrapperDataSet<TestData>>();
+  auto dataset = std::make_unique<RealDataSet<TestData>>();
 
   auto* datasetPtr = dataset.get();
   wrapper->AddChild(std::move(dataset));
@@ -217,7 +218,7 @@ TEST(TransactionTest, ChildInheritsParentTransaction) {
   wrapper->StartTransaction();
 
   // Child operations should not trigger immediate notifications
-  datasetPtr->Add(1);
+  datasetPtr->Add(TestData(1));
   EXPECT_TRUE(datasetPtr->InTransaction());
 
   // End transaction
