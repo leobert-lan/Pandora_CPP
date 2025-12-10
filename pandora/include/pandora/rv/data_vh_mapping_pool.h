@@ -18,6 +18,7 @@
 #define PANDORA_RV_DATA_VH_MAPPING_POOL_H
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <typeindex>
 #include <stdexcept>
