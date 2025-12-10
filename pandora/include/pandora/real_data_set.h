@@ -88,50 +88,6 @@ namespace pandora
             return static_cast<int>(std::distance(data_.begin(), it));
         }
 
-        // TODO: Add data modification convenience methods
-        //
-        // template<typename UpdateFunc>
-        // bool UpdateAt(int index, UpdateFunc&& updater) {
-        //   if (index < 0 || index >= static_cast<int>(data_.size())) return false;
-        //   OnBeforeChanged();
-        //   updater(data_[index]);
-        //   OnAfterChanged();
-        //   return true;
-        // }
-        //
-        // template<typename UpdateFunc>
-        // void UpdateAll(UpdateFunc&& updater) {
-        //   OnBeforeChanged();
-        //   for (auto& item : data_) {
-        //     updater(item);
-        //   }
-        //   OnAfterChanged();
-        // }
-        //
-        // template<typename PredicateFunc, typename UpdateFunc>
-        // int UpdateIf(PredicateFunc&& predicate, UpdateFunc&& updater) {
-        //   int count = 0;
-        //   OnBeforeChanged();
-        //   for (auto& item : data_) {
-        //     if (predicate(item)) {
-        //       updater(item);
-        //       ++count;
-        //     }
-        //   }
-        //   OnAfterChanged();
-        //   return count;
-        // }
-        //
-        // T* GetMutableDataByIndex(int index) {
-        //   if (index < 0 || index >= static_cast<int>(data_.size())) return nullptr;
-        //   return &data_[index];
-        // }
-        //
-        // void NotifyDataChanged() {
-        //   OnBeforeChanged();
-        //   OnAfterChanged();
-        // }
-
         // Node interface implementation
         [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
         void SetGroupIndex(int group_index) override { group_index_ = group_index; }

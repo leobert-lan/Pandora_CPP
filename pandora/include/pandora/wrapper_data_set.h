@@ -2,10 +2,13 @@
 #define PANDORA_WRAPPER_DATA_SET_H_
 
 #include "pandora_box_adapter.h"
+#include "pandora_traits.h"
 #include <vector>
 #include <algorithm>
 #include <memory>
 #include <utility>
+
+#include "diff_util.h"
 
 namespace pandora
 {
@@ -489,6 +492,7 @@ namespace pandora
             return use_transaction_ || IsParentInTransaction();
         }
 
+
     private:
         [[nodiscard]] bool IsParentInTransaction() const
         {
@@ -498,27 +502,33 @@ namespace pandora
         // Calculate changes and notify observers
         void CalcChangeAndNotify()
         {
-            // In C++, we would trigger diff calculation and notify callbacks here
-            // This is a placeholder for the DiffUtil logic in Java
-            // if (this->GetListUpdateCallback() != nullptr)
-            // {
-            //     // todo
-            //     // DiffUtil calculation would go here
-            //     // For now, this is a no-op as we don't have DiffUtil in C++
-            // }
+            if (auto callback = PandoraBoxAdapter<T>::GetListUpdateCallback())
+            {
+                DiffCallbackImpl diff_callback(this, old_data_, old_data_hashes_);
+                const auto result = DiffUtil::CalculateDiff(&diff_callback);
+                if (result)
+                {
+                    if (auto ref = result.get()) ref->DispatchUpdatesTo(callback);
+                }
+            }
         }
 
         // Snapshot current state (for transaction support)
         void Snapshot()
         {
             old_data_.clear();
+            old_data_hashes_.clear();
             const auto count = GetDataCount();
             for (int i = 0; i < count; ++i)
             {
                 auto data = GetDataByIndex(i);
                 old_data_.push_back(data);
+                if (data) {
+                    old_data_hashes_.push_back(Pandora::Hash(*data));
+                } else {
+                    old_data_hashes_.push_back(0);
+                }
             }
-
         }
 
         // Dump debug information
@@ -543,10 +553,61 @@ namespace pandora
 
         std::vector<std::unique_ptr<PandoraBoxAdapter<T>>> subs_;
         std::vector<T*> old_data_; // Snapshot for transaction rollback
+        std::vector<size_t> old_data_hashes_; // Snapshot of content hashes
         bool use_transaction_ = false;
         int group_index_ = Node<PandoraBoxAdapter<T>>::kNoGroupIndex;
         int start_index_ = 0;
         PandoraBoxAdapter<T>* parent_ = nullptr;
+
+        // DiffCallback implementation for change detection
+        class DiffCallbackImpl : public DiffCallback {
+        private:
+            WrapperDataSet<T>* dataset_;
+            const std::vector<T*>& old_list_;
+            const std::vector<size_t>& old_hashes_;
+
+        public:
+            DiffCallbackImpl(WrapperDataSet<T>* dataset,
+                           const std::vector<T*>& old_list,
+                           const std::vector<size_t>& old_hashes)
+                : dataset_(dataset), old_list_(old_list), old_hashes_(old_hashes) {}
+
+            int GetOldListSize() const override {
+                return static_cast<int>(old_list_.size());
+            }
+
+            int GetNewListSize() const override {
+                return dataset_->GetDataCount();
+            }
+
+            bool AreItemsTheSame(int old_item_position, int new_item_position) const override {
+                if (old_item_position >= static_cast<int>(old_list_.size())) return false;
+                if (new_item_position >= dataset_->GetDataCount()) return false;
+
+                T* old_item = old_list_[old_item_position];
+                T* new_item = dataset_->GetDataByIndex(new_item_position);
+
+                return Pandora::Equals(old_item, new_item);
+            }
+
+            bool AreContentsTheSame(int old_item_position, int new_item_position) const override {
+                if (old_item_position >= static_cast<int>(old_list_.size())) return false;
+                if (new_item_position >= dataset_->GetDataCount()) return false;
+
+                T* old_item = old_list_[old_item_position];
+                T* new_item = dataset_->GetDataByIndex(new_item_position);
+
+                // First check if items are the same
+                bool items_same = Pandora::Equals(old_item, new_item);
+                if (!items_same) return false;
+
+                // Then check if content hash matches
+                if (new_item == nullptr) return true;
+
+                size_t new_hash = Pandora::Hash(*new_item);
+                return old_hashes_[old_item_position] == new_hash;
+            }
+        };
     };
 } // namespace pandora
 

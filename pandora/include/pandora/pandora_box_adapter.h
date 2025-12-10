@@ -8,6 +8,8 @@
 #include <string>
 #include <functional>
 
+#include "list_update_callback.h"
+
 namespace pandora
 {
     template <typename T>
@@ -105,7 +107,19 @@ namespace pandora
         [[nodiscard]] virtual bool InTransaction() const = 0;
         virtual void Restore() = 0;
 
+        [[nodiscard]] ListUpdateCallback* GetListUpdateCallback() const
+        {
+            return listUpdateCallback.get();
+        }
+
+        void SetListUpdateCallback(std::unique_ptr<ListUpdateCallback> list_update_callback)
+        {
+            listUpdateCallback = std::move(list_update_callback);
+        }
+
+    private:
         std::string alias_;
+        std::unique_ptr<ListUpdateCallback> listUpdateCallback;
     };
 } // namespace pandora
 
