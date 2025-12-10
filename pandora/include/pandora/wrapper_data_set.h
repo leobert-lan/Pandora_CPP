@@ -603,7 +603,7 @@ namespace pandora
 
                 // Then check if content hash matches
                 if (new_item == nullptr) return true;
-
+                
                 size_t new_hash = Pandora::Hash(*new_item);
                 return old_hashes_[old_item_position] == new_hash;
             }

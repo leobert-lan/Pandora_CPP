@@ -33,7 +33,7 @@ namespace rv {
  * It delegates data operations to the underlying PandoraBoxAdapter.
  *
  * @tparam T The data type (must inherit from DataSet::Data)
- * @tparam D The PandoraBoxAdapter type
+ * @tparam DS The PandoraBoxAdapter type
  *
  * Example:
  * @code
@@ -45,10 +45,10 @@ namespace rv {
  * int count = data_set->get_count();  // DataSet method
  * @endcode
  */
-template<typename T, typename D>
+template<typename T, typename DS>
 class PandoraDataSet : public DataSet<T> {
-    static_assert(std::is_base_of<PandoraBoxAdapter<T>, D>::value,
-                  "D must inherit from PandoraBoxAdapter<T>");
+    static_assert(std::is_base_of<PandoraBoxAdapter<T>, DS>::value,
+                  "DS must inherit from PandoraBoxAdapter<T>");
 
 public:
     /**
@@ -56,19 +56,19 @@ public:
      *
      * @param data_set The underlying data adapter
      */
-    explicit PandoraDataSet(std::shared_ptr<D> data_set)
+    explicit PandoraDataSet(std::shared_ptr<DS> data_set)
         : data_set_(std::move(data_set)) {
         if (!data_set_) {
             throw PandoraException("PandoraDataSet: data_set cannot be null");
         }
     }
 
-    virtual ~PandoraDataSet() = default;
+    ~PandoraDataSet() override = default;
 
     /**
      * @brief Get the underlying data adapter
      */
-    std::shared_ptr<D> get_data_set() const {
+    std::shared_ptr<DS> get_data_set() const {
         return data_set_;
     }
 
@@ -204,66 +204,68 @@ public:
         data_set_->remove_child(sub);
     }
 
-    // ========== DataAdapter Interface ==========
+    // ========== DataAdapter Interface (Delegation) ==========
+    // These methods delegate to the underlying data_set_
+    // They are NOT overrides of DataAdapter base class methods
 
-    int get_data_count() const override {
+    int get_data_count() const {
         return data_set_->get_data_count();
     }
 
-    std::shared_ptr<T> get_data_by_index(int index) override {
+    std::shared_ptr<T> get_data_by_index(int index) {
         return data_set_->get_data_by_index(index);
     }
 
-    void clear_all_data() override {
+    void clear_all_data() {
         data_set_->clear_all_data();
     }
 
-    void add(std::shared_ptr<T> item) override {
+    void add(std::shared_ptr<T> item) {
         data_set_->add(item);
     }
 
-    void add_at(int index, std::shared_ptr<T> item) override {
+    void add_at(int index, std::shared_ptr<T> item) {
         data_set_->add_at(index, item);
     }
 
-    void add_items(const std::vector<std::shared_ptr<T>>& items) override {
+    void add_items(const std::vector<std::shared_ptr<T>>& items) {
         data_set_->add_items(items);
     }
 
-    void add_items_at(int index, const std::vector<std::shared_ptr<T>>& items) override {
+    void add_items_at(int index, const std::vector<std::shared_ptr<T>>& items) {
         data_set_->add_items_at(index, items);
     }
 
-    void remove_item(std::shared_ptr<T> item) override {
+    void remove_item(std::shared_ptr<T> item) {
         data_set_->remove_item(item);
     }
 
-    void remove_item_at(int index) override {
+    void remove_item_at(int index) {
         data_set_->remove_item_at(index);
     }
 
-    void remove_items(int start, int count) override {
+    void remove_items(int start, int count) {
         data_set_->remove_items(start, count);
     }
 
-    void set_item(int index, std::shared_ptr<T> item) override {
+    void set_item(int index, std::shared_ptr<T> item) {
         data_set_->set_item(index, item);
     }
 
-    int index_of(std::shared_ptr<T> item) const override {
+    int index_of(std::shared_ptr<T> item) const {
         return data_set_->index_of(item);
     }
 
-    bool contains(std::shared_ptr<T> item) const override {
+    bool contains(std::shared_ptr<T> item) const {
         return data_set_->contains(item);
     }
 
-    std::vector<std::shared_ptr<T>> get_all_data() const override {
+    std::vector<std::shared_ptr<T>> get_all_data() const {
         return data_set_->get_all_data();
     }
 
 protected:
-    std::shared_ptr<D> data_set_;
+    std::shared_ptr<DS> data_set_;
 };
 
 } // namespace rv

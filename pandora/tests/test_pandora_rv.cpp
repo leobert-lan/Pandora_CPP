@@ -224,7 +224,7 @@ void example_wrapper_dataset() {
     auto footer_ds = std::make_shared<RealDataSet<SimpleData>>();
 
     // Add data to children
-    header_ds->add(std::make_shared<SimpleData>("Header", 0));
+    header_ds->Add(std::make_shared<SimpleData>("Header", 0));
     content_ds->add(std::make_shared<SimpleData>("Content 1", 1));
     content_ds->add(std::make_shared<SimpleData>("Content 2", 2));
     content_ds->add(std::make_shared<SimpleData>("Content 3", 3));
