@@ -33,6 +33,16 @@ namespace pandora
             Println(WARN, tag, text);
         }
 
+        static void w(const char* tag, const std::string& text)
+        {
+            Println(WARN, tag, text);
+        }
+
+        static void e(const char* tag, const char* text)
+        {
+            Println(ERROR, tag, text);
+        }
+
         static void e(const char* tag, const std::string& text)
         {
             Println(ERROR, tag, text);
@@ -41,6 +51,16 @@ namespace pandora
         static void i(const char* tag, const char* text)
         {
             Println(INFO, tag, text);
+        }
+
+        static void i(const char* tag, const std::string& text)
+        {
+            Println(INFO, tag, text);
+        }
+
+        static void v(const char* tag, const char* text)
+        {
+            Println(VERBOSE, tag, text);
         }
 
         static void v(const char* tag, const std::string& text)

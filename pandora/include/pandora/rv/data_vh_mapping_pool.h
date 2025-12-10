@@ -68,7 +68,7 @@ public:
      * @param creator The ViewHolder creator
      */
     template<typename T>
-    void register_dv_relation(std::shared_ptr<ViewHolderCreator> creator) {
+    void RegisterDvRelation(std::shared_ptr<ViewHolderCreator> creator) {
         auto relation = std::make_shared<DataVhRelation<T>>(
             std::type_index(typeid(T)), creator);
         register_dv_relation_internal(relation);
@@ -81,7 +81,7 @@ public:
      * @param relation The custom DVRelation
      */
     template<typename T>
-    void register_dv_relation(std::shared_ptr<DVRelation<T>> relation) {
+    void RegisterDvRelation(std::shared_ptr<DVRelation<T>> relation) {
         register_dv_relation_internal(relation);
     }
 
@@ -91,8 +91,8 @@ public:
      * @tparam T The data type to remove
      */
     template<typename T>
-    void remove_dv_relation() {
-        remove_dv_relation(std::type_index(typeid(T)));
+    void RemoveDvRelation() {
+        RemoveDvRelation(std::type_index(typeid(T)));
     }
 
     /**
@@ -100,8 +100,8 @@ public:
      *
      * @param type_idx The type index to remove
      */
-    void remove_dv_relation(std::type_index type_idx) {
-        std::lock_guard<std::mutex> lock(mutex_);
+    void RemoveDvRelation(std::type_index type_idx) {
+        std::lock_guard lock(mutex_);
 
         for (auto it = view_type_cache_.begin(); it != view_type_cache_.end();) {
             if (it->second && it->second->WorkFor(type_idx)) {
@@ -126,10 +126,10 @@ public:
      */
     template<typename T>
     int GetItemViewType(std::shared_ptr<T> data) {
-        std::type_index type_idx(typeid(T));
+        const std::type_index type_idx(typeid(T));
 
         // Find the typed cell for this data type
-        auto typed_it = typed_cells_.find(type_idx);
+        const auto typed_it = typed_cells_.find(type_idx);
         if (typed_it != typed_cells_.end()) {
             auto typed_cell = std::static_pointer_cast<TypedTypeCell<T>>(typed_it->second);
             return typed_cell->GetItemViewType(data);
@@ -146,7 +146,7 @@ public:
         }
 
         // Not registered
-        std::string error = "Type not registered: " + std::string(type_idx.name());
+        const std::string error = "Type not registered: " + std::string(type_idx.name());
         Logger::e("DataVhMappingPool", error);
         throw std::runtime_error(error);
     }
@@ -155,7 +155,7 @@ public:
      * @brief Get total view type count
      */
     int GetViewTypeCount() const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
 
         int count = 0;
         for (const auto& pair : view_type_cache_) {
@@ -180,19 +180,19 @@ public:
      */
     std::shared_ptr<IViewHolderBase> CreateViewHolder(void* parent, int view_type) {
         try {
-            int index = view_type / max_size_;
-            int sub_index = view_type % max_size_;
+            const int index = view_type / max_size_;
+            const int sub_index = view_type % max_size_;
 
             Logger::v("DataVhMappingPool",
                      "createViewHolder: index=" + std::to_string(index) +
                      ", subIndex=" + std::to_string(sub_index) +
                      ", viewType=" + std::to_string(view_type));
 
-            auto it = view_type_cache_.find(index);
+            const auto it = view_type_cache_.find(index);
             if (it != view_type_cache_.end() && it->second) {
-                auto creator_func = it->second->GetVhCreatorFunc(sub_index);
+                const auto creator_func = it->second->GetVhCreatorFunc(sub_index);
                 if (creator_func) {
-                    auto creator = creator_func();
+                    const auto creator = creator_func();
                     if (creator) {
                         return creator->CreateViewHolder(parent);
                     }
@@ -206,10 +206,8 @@ public:
 
             // Use error cell if available
             if (internal_error_cell_) {
-                auto creator_func = internal_error_cell_->GetVhCreatorFunc(0);
-                if (creator_func) {
-                    auto creator = creator_func();
-                    if (creator) {
+                if (const auto creator_func = internal_error_cell_->GetVhCreatorFunc(0)) {
+                    if (const auto creator = creator_func()) {
                         return creator->CreateViewHolder(parent);
                     }
                 }
@@ -232,7 +230,7 @@ public:
         );
         internal_error_cell_->RegisterCreator(
             DVRelation<void>::SINGLE_TYPE_TOKEN,
-            [creator]() { return creator; }
+            [creator] { return creator; }
         );
     }
 
@@ -242,7 +240,7 @@ public:
      * @param other The pool to merge from
      */
     void merge(const DataVhMappingPool& other) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
 
         // Copy all cells from other pool
         for (const auto& pair : other.view_type_cache_) {
@@ -268,9 +266,9 @@ public:
 private:
     template<typename T>
     void register_dv_relation_internal(std::shared_ptr<DVRelation<T>> relation) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
 
-        int n = relation->one_to_n();
+        const int n = relation->one_to_n();
 
         // Expand max_size if needed
         while (n > max_size_) {
