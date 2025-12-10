@@ -128,7 +128,7 @@ public:
         view_holder->SetData(std::shared_ptr<BaseData>(this));
     }
 
-    size_t Hash() const
+    virtual size_t Hash() const
     {
         std::size_t seed = 0x5C0A28E4;
         seed ^= (seed << 6) + (seed >> 2) + 0x2A691606;
@@ -151,7 +151,7 @@ public:
     }
 
     // 实现 Hash() 成员函数
-    size_t Hash() const
+    size_t Hash() const override
     {
         size_t seed = 0;
         HashCombine(seed, text);
@@ -176,7 +176,7 @@ public:
     }
 
     // 实现 Hash() 成员函数
-    size_t Hash() const
+    size_t Hash() const override
     {
         size_t seed = 0;
         HashCombine(seed, url);
@@ -333,10 +333,10 @@ void example_wrapper_dataset()
     auto wrapper_ds = std::make_shared<WrapperDataSet<SimpleData>>();
     const auto rv_data_set = std::make_shared<PandoraWrapperRvDataSet<SimpleData>>(wrapper_ds);
 
-    // Create child adapters
-    const auto header_ds = std::make_shared<RealDataSet<SimpleData>>();
-    const auto content_ds = std::make_shared<RealDataSet<SimpleData>>();
-    const auto footer_ds = std::make_shared<RealDataSet<SimpleData>>();
+    // Create child adapters using unique_ptr
+    auto header_ds = std::make_unique<RealDataSet<SimpleData>>();
+    auto content_ds = std::make_unique<RealDataSet<SimpleData>>();
+    auto footer_ds = std::make_unique<RealDataSet<SimpleData>>();
 
     // Add data to children
     header_ds->Add(SimpleData("Header", 0));
@@ -345,10 +345,10 @@ void example_wrapper_dataset()
     content_ds->Add(SimpleData("Content 3", 3));
     footer_ds->Add(SimpleData("Footer", 99));
 
-    // Add children to wrapper
-    rv_data_set->AddSub(std::unique_ptr<RealDataSet<SimpleData>>(header_ds.get()));
-    rv_data_set->AddSub(std::unique_ptr<RealDataSet<SimpleData>>(content_ds.get()));
-    rv_data_set->AddSub(std::unique_ptr<RealDataSet<SimpleData>>(footer_ds.get()));
+    // Add children to wrapper (transfer ownership)
+    rv_data_set->AddSub(std::move(header_ds));
+    rv_data_set->AddSub(std::move(content_ds));
+    rv_data_set->AddSub(std::move(footer_ds));
 
     std::cout << "Total items in wrapper: " << rv_data_set->GetCount() << std::endl;
 

@@ -69,7 +69,7 @@ public:
      */
     template<typename T>
     void RegisterDvRelation(std::shared_ptr<ViewHolderCreator> creator) {
-        auto relation = std::make_shared<DataVhRelation<T>>(
+        std::shared_ptr<DVRelation<T>> relation = std::make_shared<DataVhRelation<T>>(
             std::type_index(typeid(T)), creator);
         RegisterDvRelationInternal(relation);
     }
@@ -280,8 +280,8 @@ private:
         // Create TypeCell
         auto typed_cell = std::make_shared<TypedTypeCell<T>>(type_cell_key_, relation);
 
-        // Store in both caches
-        view_type_cache_[type_cell_key_] = std::make_shared<TypeCell>(typed_cell->GetCell());
+        // Store in both caches - share the same TypeCell instance
+        view_type_cache_[type_cell_key_] = typed_cell->GetCell();
         typed_cells_[relation->GetDataType()] = typed_cell;
 
         Logger::i("DataVhMappingPool",

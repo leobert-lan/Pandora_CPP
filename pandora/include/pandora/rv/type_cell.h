@@ -208,11 +208,11 @@ template<typename T>
 class TypedTypeCell {
 public:
     TypedTypeCell(int index, std::shared_ptr<DVRelation<T>> relation)
-        : cell_(index, relation->GetDataType(), relation->OneToN()),
+        : cell_(std::make_shared<TypeCell>(index, relation->GetDataType(), relation->OneToN())),
           relation_(std::move(relation)) {}
 
-    TypeCell& GetCell() { return cell_; }
-    const TypeCell& GetCell() const { return cell_; }
+    std::shared_ptr<TypeCell> GetCell() { return cell_; }
+    std::shared_ptr<const TypeCell> GetCell() const { return cell_; }
 
     std::shared_ptr<DVRelation<T>> GetRelation() const { return relation_; }
 
@@ -227,7 +227,7 @@ public:
             RegisterCreatorForToken(token);
         }
 
-        return cell_.GetItemViewType(token);
+        return cell_->GetItemViewType(token);
     }
 
 private:
@@ -238,10 +238,10 @@ private:
 
     void RegisterCreatorForToken(const std::string& token) {
         auto creator = relation_->GetVhCreator(token);
-        cell_.RegisterCreator(token, [creator]() { return creator; });
+        cell_->RegisterCreator(token, [creator]() { return creator; });
     }
 
-    TypeCell cell_;
+    std::shared_ptr<TypeCell> cell_;
     std::shared_ptr<DVRelation<T>> relation_;
 };
 
