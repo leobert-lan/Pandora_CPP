@@ -5,259 +5,549 @@
 #include <vector>
 #include <algorithm>
 #include <memory>
+#include <utility>
 
-namespace pandora {
+namespace pandora
+{
+    template <typename T>
+    class WrapperDataSet : public PandoraBoxAdapter<T>
+    {
+    public:
+        WrapperDataSet() : WrapperDataSet(Node<PandoraBoxAdapter<T>>::kNoGroupIndex, 0)
+        {
+        }
 
-template <typename T>
-class WrapperDataSet : public PandoraBoxAdapter<T> {
- public:
-  WrapperDataSet() = default;
-  [[nodiscard]] int GetDataCount() const override {
-    int count = 0;
-    for (const auto& sub : subs_) {
-      if (sub) count += sub->GetDataCount();
-    }
-    return count;
-  }
-  T* GetDataByIndex(const int index) override {
-    int offset = 0;
-    for (auto& sub : subs_) {
-      const int sub_count = sub->GetDataCount();
-      if (index < offset + sub_count) {
-        return sub->GetDataByIndex(index - offset);
-      }
-      offset += sub_count;
-    }
-    return nullptr;
-  }
-  void ClearAllData() override {
-    for (auto& sub : subs_) {
-      if (sub) sub->ClearAllData();
-    }
-  }
-  void Add(const T& item) override {
-    if (!subs_.empty()) subs_.back()->Add(item);
-  }
-  void Add(const int pos, const T& item) override {
-    int offset = 0;
-    for (auto& sub : subs_) {
-      const int sub_count = sub->GetDataCount();
-      if (pos < offset + sub_count) {
-        sub->Add(pos - offset, item);
-        return;
-      }
-      offset += sub_count;
-    }
-    Add(item);
-  }
-  void AddAll(const std::vector<T>& collection) override {
-    if (!subs_.empty()) subs_.back()->AddAll(collection);
-  }
-  void Remove(const T& item) override {
-    for (auto& sub : subs_) {
-      if (sub) sub->Remove(item);
-    }
-  }
-  void RemoveAtPos(const int position) override {
-    int offset = 0;
-    for (auto& sub : subs_) {
-      const int sub_count = sub->GetDataCount();
-      if (position < offset + sub_count) {
-        sub->RemoveAtPos(position - offset);
-        return;
-      }
-      offset += sub_count;
-    }
-  }
-  bool ReplaceAtPosIfExist(const int position, const T& item) override {
-    int offset = 0;
-    for (auto& sub : subs_) {
-      const int sub_count = sub->GetDataCount();
-      if (position < offset + sub_count) {
-        return sub->ReplaceAtPosIfExist(position - offset, item);
-      }
-      offset += sub_count;
-    }
-    return false;
-  }
-  void SetData(const std::vector<T>& collection) override {
-    // no-op
-  }
-  int IndexOf(const T& item) const override {
-    int offset = 0;
-    for (const auto& sub : subs_) {
-      const int idx = sub->IndexOf(item);
-      if (idx >= 0) return offset + idx;
-      offset += sub->GetDataCount();
-    }
-    return -1;
-  }
-  void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) override {
-    if (!sub) return;
+        WrapperDataSet(const int group_index, const int start_index)
+            : group_index_(group_index), start_index_(start_index)
+        {
+        }
 
-    // If sub already has a parent, remove it from the original parent first
-    if (sub->HasBindToParent()) {
-      sub->RemoveFromOriginalParent();
-    }
+        [[nodiscard]] int GetDataCount() const override
+        {
+            int ret = 0;
+            for (const auto& sub : subs_)
+            {
+                if (sub) ret += sub->GetDataCount();
+            }
+            return ret;
+        }
 
-    // Set group index and notify the child about the new parent
-    const int group_index = static_cast<int>(subs_.size());
-    sub->SetGroupIndex(group_index);
+        T* GetDataByIndex(const int index) override
+        {
+            int real_index = index + start_index_;
+            Log(Logger::VERBOSE, "getDataByResolvedIndex " + std::to_string(index) +
+                " ; real index: " + std::to_string(real_index));
 
-    const int count = GetDataCount();
-    sub->SetStartIndex(count);
+            if (index < 0 || index >= GetDataCount())
+            {
+                return nullptr;
+            }
 
-    // Store raw pointer before moving
-    PandoraBoxAdapter<T>* sub_ptr = sub.get();
-    subs_.push_back(std::move(sub));
+            // Binary search to find target sub adapter
+            PandoraBoxAdapter<T>* target_sub = nullptr;
 
-    // Notify child it has been added to parent
-    sub_ptr->NotifyHasAddToParent(this);
-  }
+            int start = 0;
+            int end = static_cast<int>(subs_.size()) - 1;
 
-  void RemoveChild(PandoraBoxAdapter<T>* sub) override {
-    auto it = std::remove_if(subs_.begin(), subs_.end(),
-      [sub](const std::unique_ptr<PandoraBoxAdapter<T>>& ptr) {
-        return ptr.get() == sub;
-      });
+            while (start <= end)
+            {
+                int mid = (end - start) / 2 + start;
+                PandoraBoxAdapter<T>* adapter = subs_[mid].get();
 
-    if (it != subs_.end()) {
-      // Notify child it has been removed from parent
-      (*it)->NotifyHasRemoveFromParent();
-      subs_.erase(it, subs_.end());
-    }
-  }
+                if (real_index < adapter->GetStartIndex())
+                {
+                    end = mid - 1;
+                }
+                else if (adapter->GetDataCount() == 0 ||
+                    real_index >= (adapter->GetStartIndex() + adapter->GetDataCount()))
+                {
+                    start = mid + 1;
+                }
+                else
+                {
+                    target_sub = adapter;
+                    break;
+                }
+            }
 
-  [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
+            if (target_sub == nullptr)
+            {
+                Log(Logger::ERROR, "getDataByRealIndex " + std::to_string(real_index) +
+                    "; no child find");
+                return nullptr;
+            }
 
-  void SetGroupIndex(int group_index) override { group_index_ = group_index; }
+            Log(Logger::VERBOSE, "getDataByIndex " + std::to_string(real_index) +
+                " " + target_sub->GetAlias() + " - " + std::to_string(reinterpret_cast<uintptr_t>(target_sub)));
 
-  [[nodiscard]] bool HasBindToParent() const override {
-    return parent_ != nullptr;
-  }
+            int resolved_index = real_index - target_sub->GetStartIndex();
+            return target_sub->GetDataByIndex(resolved_index);
+        }
 
-  void RemoveFromOriginalParent() override {
-    if (parent_ != nullptr) {
-      parent_->RemoveChild(this);
-      parent_ = nullptr;
-    }
-  }
+        void ClearAllData() override
+        {
+            StartTransaction();
+            for (auto& sub : subs_)
+            {
+                if (sub) sub->ClearAllData();
+            }
+            EndTransaction();
+        }
 
-  void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) override {
-    parent_ = parent;
-  }
+        void ClearAllChildren()
+        {
+            if (!subs_.empty())
+            {
+                OnBeforeChanged();
+                while (!subs_.empty())
+                {
+                    auto& sub = subs_.front();
+                    sub->NotifyHasRemoveFromParent();
+                    subs_.erase(subs_.begin());
+                }
+                OnAfterChanged();
+            }
+        }
 
-  void NotifyHasRemoveFromParent() override {
-    parent_ = nullptr;
-  }
+        int GetChildCount() const
+        {
+            return static_cast<int>(subs_.size());
+        }
 
-  [[nodiscard]] int GetStartIndex() const override { return start_index_; }
+        PandoraBoxAdapter<T>* GetChild(int index)
+        {
+            if (index < 0 || index >= static_cast<int>(subs_.size()))
+                return nullptr;
+            return subs_[index].get();
+        }
 
-  void SetStartIndex(int start_index) override { start_index_ = start_index; }
+        void Add(const T& item) override
+        {
+            StartTransaction();
+            if (!subs_.empty())
+            {
+                subs_.back()->Add(item);
+            }
+            EndTransaction();
+        }
 
-  // Get parent
-  PandoraBoxAdapter<T>* GetParent() override { return parent_; }
+        void Add(const int pos, const T& item) override
+        {
+            if (pos < 0) return;
 
-  // Alias support
-  PandoraBoxAdapter<T>* FindByAlias(const std::string& target_alias) override {
-    if (target_alias.empty()) return nullptr;
-    if (this->GetAlias() == target_alias) return this;
+            StartTransaction();
+            if (pos >= GetDataCount())
+            {
+                Add(item);
+            }
+            else
+            {
+                auto target = RetrieveAdapterByDataIndex2(pos);
+                if (target.first == nullptr)
+                {
+                    Log(Logger::ERROR, "bug, cannot find target adapter");
+                }
+                else
+                {
+                    target.first->Add(target.second, item);
+                }
+            }
+            EndTransaction();
+        }
 
-    // Search in children
-    for (auto& sub : subs_) {
-      if (sub) {
-        PandoraBoxAdapter<T>* result = sub->FindByAlias(target_alias);
-        if (result) return result;
-      }
-    }
-    return nullptr;
-  }
+        void AddAll(const std::vector<T>& collection) override
+        {
+            StartTransaction();
+            if (!subs_.empty())
+            {
+                subs_.back()->AddAll(collection);
+            }
+            EndTransaction();
+        }
 
-  bool IsAliasConflict(const std::string& alias) override {
-    if (this->GetAlias() == alias) return true;
+        void Remove(const T& item) override
+        {
+            StartTransaction();
+            for (auto& sub : subs_)
+            {
+                if (sub) sub->Remove(item);
+            }
+            EndTransaction();
+        }
 
-    // Check in children
-    for (auto& sub : subs_) {
-      if (sub && sub->IsAliasConflict(alias)) {
-        return true;
-      }
-    }
-    return false;
-  }
+        void RemoveAtPos(const int position) override
+        {
+            StartTransaction();
+            if (position < 0 || position >= GetDataCount())
+            {
+                Log(Logger::ERROR, "index out of boundary");
+            }
+            else
+            {
+                auto target = RetrieveAdapterByDataIndex2(position);
+                if (target.first == nullptr)
+                {
+                    Log(Logger::ERROR, "bug, cannot find target adapter");
+                }
+                else
+                {
+                    target.first->RemoveAtPos(target.second);
+                }
+            }
+            EndTransaction();
+        }
 
-  // Transaction support
-  void StartTransaction() override {
-    use_transaction_ = true;
-    // Propagate to children
-    for (auto& sub : subs_) {
-      if (sub) sub->StartTransaction();
-    }
-  }
+        bool ReplaceAtPosIfExist(const int position, const T& item) override
+        {
+            if (position < 0 || position >= GetDataCount()) return false;
 
-  void EndTransaction() override {
-    use_transaction_ = false;
-    // Propagate to children
-    for (auto& sub : subs_) {
-      if (sub) sub->EndTransaction();
-    }
-  }
+            StartTransaction();
+            auto target = RetrieveAdapterByDataIndex2(position);
+            bool result = false;
+            if (target.first == nullptr)
+            {
+                Log(Logger::ERROR, "bug, cannot find target adapter");
+            }
+            else
+            {
+                result = target.first->ReplaceAtPosIfExist(target.second, item);
+            }
+            EndTransaction();
+            return result;
+        }
 
-  void EndTransactionSilently() override {
-    use_transaction_ = false;
-    // Propagate to children
-    for (auto& sub : subs_) {
-      if (sub) sub->EndTransactionSilently();
-    }
-  }
+        void SetData(const std::vector<T>& collection) override
+        {
+            Log(Logger::WARN, "setData: WrapperDataSet does not support this operation");
+        }
 
-  [[nodiscard]] bool InTransaction() const override {
-    return use_transaction_ || IsParentInTransaction();
-  }
+        int IndexOf(const T& item) const override
+        {
+            int index = -1;
+            for (const auto& sub : subs_)
+            {
+                if (!sub) continue;
+                int i = sub->IndexOf(item);
+                if (i >= 0)
+                {
+                    index = sub->GetStartIndex() + i;
+                    break;
+                }
+            }
+            if (index == -1)
+                return -1;
+            return index - start_index_;
+        }
 
- protected:
-  void OnBeforeChanged() override {
-    if (!InTransaction()) {
-      // Snapshot children todo stackoverflow！！没有意义！！
-      for (auto& sub : subs_) {
-        if (sub) sub->OnBeforeChanged();
-      }
-    }
-    if (parent_) {
-      parent_->OnBeforeChanged();
-    }
-  }
+        void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) override
+        {
+            if (!sub) return;
 
-  void OnAfterChanged() override {
-    if (parent_) {
-      parent_->OnAfterChanged();
-    }
-    if (!InTransaction()) {
-      // Notify changes
-      for (auto& sub : subs_) {
-        if (sub) sub->OnAfterChanged();
-      }
-    }
-  }
+            if (sub->HasBindToParent())
+            {
+                sub->RemoveFromOriginalParent();
+            }
 
-  void Restore() override {
-    // Restore all children
-    for (auto& sub : subs_) {
-      if (sub) sub->Restore();
-    }
-  }
+            OnBeforeChanged();
 
- private:
-  [[nodiscard]] bool IsParentInTransaction() const {
-    return parent_ != nullptr && parent_->InTransaction();
-  }
+            int group_index = static_cast<int>(subs_.size());
+            sub->SetGroupIndex(group_index);
 
-  std::vector<std::unique_ptr<PandoraBoxAdapter<T>>> subs_;
-  bool use_transaction_ = false;
-  int group_index_ = Node<PandoraBoxAdapter<T>>::kNoGroupIndex;
-  int start_index_ = 0;
-  PandoraBoxAdapter<T>* parent_ = nullptr;
-};
+            int count = GetDataCount();
+            sub->SetStartIndex(count);
 
-}  // namespace pandora
+            // Store raw pointer before moving
+            PandoraBoxAdapter<T>* sub_ptr = sub.get();
+            sub_ptr->NotifyHasAddToParent(this);
+
+            subs_.push_back(std::move(sub));
+
+            OnAfterChanged();
+        }
+
+        void RemoveChild(PandoraBoxAdapter<T>* sub) override
+        {
+            auto it = std::find_if(subs_.begin(), subs_.end(),
+                                   [sub](const std::unique_ptr<PandoraBoxAdapter<T>>& ptr)
+                                   {
+                                       return ptr.get() == sub;
+                                   });
+
+            if (it != subs_.end())
+            {
+                OnBeforeChanged();
+                subs_.erase(it);
+                sub->NotifyHasRemoveFromParent(); // make sure
+                OnAfterChanged();
+            }
+        }
+
+        [[nodiscard]] int GetGroupIndex() const override { return group_index_; }
+
+        void SetGroupIndex(const int group_index) override { group_index_ = group_index; }
+
+        [[nodiscard]] bool HasBindToParent() const override
+        {
+            return parent_ != nullptr;
+        }
+
+        void RemoveFromOriginalParent() override
+        {
+            if (parent_ != nullptr)
+            {
+                parent_->RemoveChild(this);
+                parent_ = nullptr;
+            }
+        }
+
+        void NotifyHasAddToParent(PandoraBoxAdapter<T>* parent) override
+        {
+            parent_ = parent;
+        }
+
+        void NotifyHasRemoveFromParent() override
+        {
+            parent_ = nullptr;
+        }
+
+        [[nodiscard]] int GetStartIndex() const override { return start_index_; }
+
+        void SetStartIndex(const int start_index) override { start_index_ = start_index; }
+
+        // Get parent
+        PandoraBoxAdapter<T>* GetParent() override { return parent_; }
+
+        // Alias support
+        PandoraBoxAdapter<T>* FindByAlias(const std::string& target_alias) override
+        {
+            if (target_alias.empty()) return nullptr;
+            if (this->GetAlias() == target_alias) return this;
+
+            // Search in children
+            for (auto& sub : subs_)
+            {
+                if (sub)
+                {
+                    PandoraBoxAdapter<T>* result = sub->FindByAlias(target_alias);
+                    if (result) return result;
+                }
+            }
+            return nullptr;
+        }
+
+        bool IsAliasConflict(const std::string& alias) override
+        {
+            if (this->GetAlias() == alias) return true;
+
+            // Check in children
+            for (auto& sub : subs_)
+            {
+                if (sub && sub->IsAliasConflict(alias))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Transaction support
+        void StartTransaction() override
+        {
+            use_transaction_ = true;
+            Snapshot();
+        }
+
+        void EndTransaction() override
+        {
+            use_transaction_ = false;
+            CalcChangeAndNotify();
+        }
+
+        void EndTransactionSilently() override
+        {
+            use_transaction_ = false;
+            // Propagate to children without notifying changes
+            for (auto& sub : subs_)
+            {
+                if (sub) sub->EndTransactionSilently();
+            }
+        }
+
+        // Retrieve adapter by data index (public wrapper)
+        PandoraBoxAdapter<T>* RetrieveAdapterByDataIndex(const int index) override
+        {
+            auto temp = RetrieveAdapterByDataIndex2(index);
+            if (temp.first == nullptr)
+                return nullptr;
+            return temp.first;
+        }
+
+        // Retrieve adapter and resolved index by data index
+        std::pair<PandoraBoxAdapter<T>*, int> RetrieveAdapterByDataIndex2(const int index) override
+        {
+            int real_index = GetStartIndex() + index;
+            if (start_index_ <= real_index && start_index_ + GetDataCount() > real_index)
+            {
+                // Find the sub adapter
+                PandoraBoxAdapter<T>* target_sub = nullptr;
+
+                if (subs_.empty())
+                {
+                    return {nullptr, -1};
+                }
+
+                int mid = static_cast<int>(subs_.size()) / 2;
+                PandoraBoxAdapter<T>* sub = subs_[mid].get();
+                if (real_index >= sub->GetStartIndex() && real_index < (sub->GetStartIndex() + sub->GetDataCount()))
+                {
+                    target_sub = sub;
+                }
+
+                int start = 0;
+                int end = static_cast<int>(subs_.size()) - 1;
+                while (start <= end)
+                {
+                    mid = (end - start) / 2 + start;
+                    PandoraBoxAdapter<T>* adapter = subs_[mid].get();
+
+                    if (real_index < adapter->GetStartIndex())
+                    {
+                        end = mid - 1;
+                    }
+                    else if (adapter->GetDataCount() == 0 || real_index >= (adapter->GetStartIndex() + adapter->GetDataCount()))
+                    {
+                        start = mid + 1;
+                    }
+                    else
+                    {
+                        target_sub = adapter;
+                        break;
+                    }
+                }
+
+                if (target_sub == nullptr)
+                    return {nullptr, -1};
+
+                int resolved_index = real_index - target_sub->GetStartIndex();
+                return target_sub->RetrieveAdapterByDataIndex2(resolved_index);
+            }
+            return {nullptr, -1};
+        }
+
+        void OnBeforeChanged() override
+        {
+            if (!InTransaction())
+            {
+                Snapshot();
+            }
+            if (parent_)
+            {
+                parent_->OnBeforeChanged();
+            }
+        }
+
+        void OnAfterChanged() override
+        {
+            RebuildSubNodes();
+            if (parent_)
+            {
+                parent_->OnAfterChanged();
+            }
+            if (!InTransaction())
+            {
+                CalcChangeAndNotify();
+            }
+        }
+
+        void Restore() override
+        {
+            // Restore all children
+            for (auto& sub : subs_)
+            {
+                if (sub) sub->Restore();
+            }
+        }
+
+        void RebuildSubNodes() override
+        {
+            const int sub_counts = static_cast<int>(subs_.size());
+            int offset = 0;
+            for (int i = 0; i < sub_counts; i++)
+            {
+                auto& sub = subs_[i];
+                if (!sub) continue;
+
+                sub->SetGroupIndex(i);
+                sub->SetStartIndex(GetStartIndex() + offset);
+                sub->RebuildSubNodes();
+                offset += sub->GetDataCount();
+            }
+        }
+
+        bool InTransaction() const override
+        {
+            return use_transaction_ || IsParentInTransaction();
+        }
+
+    private:
+        [[nodiscard]] bool IsParentInTransaction() const
+        {
+            return parent_ != nullptr && parent_->InTransaction();
+        }
+
+        // Calculate changes and notify observers
+        void CalcChangeAndNotify()
+        {
+            // In C++, we would trigger diff calculation and notify callbacks here
+            // This is a placeholder for the DiffUtil logic in Java
+            // if (this->GetListUpdateCallback() != nullptr)
+            // {
+            //     // todo
+            //     // DiffUtil calculation would go here
+            //     // For now, this is a no-op as we don't have DiffUtil in C++
+            // }
+        }
+
+        // Snapshot current state (for transaction support)
+        void Snapshot()
+        {
+            old_data_.clear();
+            const auto count = GetDataCount();
+            for (int i = 0; i < count; ++i)
+            {
+                auto data = GetDataByIndex(i);
+                old_data_.push_back(data);
+            }
+
+        }
+
+        // Dump debug information
+        void Dump(std::vector<T>& target) const
+        {
+            int count = GetDataCount();
+            for (int i = 0; i < count; i++)
+            {
+                T* data = const_cast<WrapperDataSet<T>*>(this)->GetDataByIndex(i);
+                if (data)
+                {
+                    target.push_back(*data);
+                }
+            }
+        }
+
+        // Log helper method
+        void Log(const Logger::Level level, const std::string& message) const
+        {
+            Logger::Println(level, "WrapperDataSet", message);
+        }
+
+        std::vector<std::unique_ptr<PandoraBoxAdapter<T>>> subs_;
+        std::vector<T*> old_data_; // Snapshot for transaction rollback
+        bool use_transaction_ = false;
+        int group_index_ = Node<PandoraBoxAdapter<T>>::kNoGroupIndex;
+        int start_index_ = 0;
+        PandoraBoxAdapter<T>* parent_ = nullptr;
+    };
+} // namespace pandora
 
 #endif  // PANDORA_WRAPPER_DATA_SET_H_
