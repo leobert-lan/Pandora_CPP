@@ -71,7 +71,7 @@ public:
     void RegisterDvRelation(std::shared_ptr<ViewHolderCreator> creator) {
         auto relation = std::make_shared<DataVhRelation<T>>(
             std::type_index(typeid(T)), creator);
-        register_dv_relation_internal(relation);
+        RegisterDvRelationInternal(relation);
     }
 
     /**
@@ -82,7 +82,7 @@ public:
      */
     template<typename T>
     void RegisterDvRelation(std::shared_ptr<DVRelation<T>> relation) {
-        register_dv_relation_internal(relation);
+        RegisterDvRelationInternal(relation);
     }
 
     /**
@@ -188,12 +188,9 @@ public:
                      ", subIndex=" + std::to_string(sub_index) +
                      ", viewType=" + std::to_string(view_type));
 
-            const auto it = view_type_cache_.find(index);
-            if (it != view_type_cache_.end() && it->second) {
-                const auto creator_func = it->second->GetVhCreatorFunc(sub_index);
-                if (creator_func) {
-                    const auto creator = creator_func();
-                    if (creator) {
+            if (const auto it = view_type_cache_.find(index); it != view_type_cache_.end() && it->second) {
+                if (const auto creator_func = it->second->GetVhCreatorFunc(sub_index)) {
+                    if (const auto creator = creator_func()) {
                         return creator->CreateViewHolder(parent);
                     }
                 }
@@ -265,10 +262,10 @@ public:
 
 private:
     template<typename T>
-    void register_dv_relation_internal(std::shared_ptr<DVRelation<T>> relation) {
+    void RegisterDvRelationInternal(std::shared_ptr<DVRelation<T>> relation) {
         std::lock_guard lock(mutex_);
 
-        const int n = relation->one_to_n();
+        const int n = relation->OneToN();
 
         // Expand max_size if needed
         while (n > max_size_) {
@@ -284,8 +281,8 @@ private:
         auto typed_cell = std::make_shared<TypedTypeCell<T>>(type_cell_key_, relation);
 
         // Store in both caches
-        view_type_cache_[type_cell_key_] = std::make_shared<TypeCell>(typed_cell->get_cell());
-        typed_cells_[relation->get_data_type()] = typed_cell;
+        view_type_cache_[type_cell_key_] = std::make_shared<TypeCell>(typed_cell->GetCell());
+        typed_cells_[relation->GetDataType()] = typed_cell;
 
         Logger::i("DataVhMappingPool",
                  "Registered DV relation with key: " + std::to_string(type_cell_key_));

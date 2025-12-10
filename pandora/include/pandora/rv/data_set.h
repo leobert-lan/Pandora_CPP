@@ -212,9 +212,9 @@ namespace pandora
              * @return Reference to this DataSet for chaining
              */
             template <typename DataType>
-            DataSet<T>& register_dv_relation(std::shared_ptr<ViewHolderCreator> creator)
+            DataSet<T>& RegisterDvRelation(std::shared_ptr<ViewHolderCreator> creator)
             {
-                mapping_pool_.register_dv_relation<DataType>(creator);
+                mapping_pool_.RegisterDvRelation<DataType>(creator);
                 return *this;
             }
 
@@ -226,9 +226,9 @@ namespace pandora
              * @return Reference to this DataSet for chaining
              */
             template <typename DataType>
-            DataSet<T>& register_dv_relation(std::shared_ptr<DVRelation<DataType>> relation)
+            DataSet<T>& RegisterDvRelation(std::shared_ptr<DVRelation<DataType>> relation)
             {
-                mapping_pool_.register_dv_relation<DataType>(relation);
+                mapping_pool_.RegisterDvRelation<DataType>(relation);
                 return *this;
             }
 
@@ -241,7 +241,7 @@ namespace pandora
             template <typename DataType>
             DataSet<T>& remove_dv_relation()
             {
-                mapping_pool_.remove_dv_relation<DataType>();
+                mapping_pool_.RegisterDvRelation<DataType>();
                 return *this;
             }
 

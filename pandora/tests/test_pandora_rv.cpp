@@ -88,7 +88,7 @@ void example_simple_list()
     const auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
 
     // Register ViewHolder creator
-    rv_data_set->register_dv_relation<SimpleData>(
+    rv_data_set->RegisterDvRelation<SimpleData>(
         make_lambda_creator<SimpleData>([](void* parent)
         {
             return std::make_shared<SimpleViewHolder>(parent);
@@ -258,11 +258,11 @@ void example_multi_type()
     const auto rv_data_set = std::make_shared<PandoraRealRvDataSet<BaseData>>(real_ds);
 
     // Register multiple types
-    rv_data_set->register_dv_relation<TextData>(
+    rv_data_set->RegisterDvRelation<TextData>(
         make_typed_creator<TextData, TextViewHolder>()
     );
 
-    rv_data_set->register_dv_relation<ImageData>(
+    rv_data_set->RegisterDvRelation<ImageData>(
         make_typed_creator<ImageData, ImageViewHolder>()
     );
 

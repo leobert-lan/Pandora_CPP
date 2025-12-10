@@ -65,11 +65,11 @@ public:
     /**
      * @brief Get the underlying RealDataSet
      *
-     * @deprecated Use get_data_set() instead
+     * @deprecated Use GetDataSet() instead
      */
-    [[deprecated("Use get_data_set() instead")]]
-    std::shared_ptr<RealDataSet<T>> get_real_data_set() const {
-        return this->get_data_set();
+    [[deprecated("Use GetDataSet() instead")]]
+    std::shared_ptr<RealDataSet<T>> GetRealDataSet() const {
+        return this->GetDataSet();
     }
 
     /**
@@ -77,8 +77,8 @@ public:
      *
      * @param group_index The group index
      */
-    void set_group_index(int group_index) {
-        this->data_set_->set_group_index(group_index);
+    void SetGroupIndex(int group_index) {
+        this->data_set_->SetGroupIndex(group_index);
     }
 };
 
