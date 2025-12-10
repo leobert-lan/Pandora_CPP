@@ -91,7 +91,7 @@ public:
      * @param pool The mapping pool to merge
      */
     void Merge(const DataVhMappingPool& pool) {
-        this->get_data_vh_mapping_pool().merge(pool);
+        this->GetDataVhMappingPool().merge(pool);
     }
 
     /**

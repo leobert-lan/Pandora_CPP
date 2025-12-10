@@ -35,7 +35,7 @@ namespace rv {
  * @code
  * class MyViewHolderCreator : public ViewHolderCreator {
  * public:
- *     std::shared_ptr<IViewHolderBase> create_view_holder(void* parent) override {
+ *     std::shared_ptr<IViewHolderBase> CreateViewHolder(void* parent) override {
  *         auto holder = std::make_shared<MyViewHolder>(parent);
  *         return std::make_shared<ViewHolderWrapper<MyData>>(holder);
  *     }
@@ -52,7 +52,7 @@ public:
      * @param parent The parent view/container (platform-specific)
      * @return A new ViewHolder instance wrapped in type-erased interface
      */
-    virtual std::shared_ptr<IViewHolderBase> create_view_holder(void* parent) = 0;
+    virtual std::shared_ptr<IViewHolderBase> CreateViewHolder(void* parent) = 0;
 
 protected:
     ViewHolderCreator() = default;
@@ -88,7 +88,7 @@ public:
     explicit LambdaViewHolderCreator(CreatorFunc func)
         : func_(std::move(func)) {}
 
-    std::shared_ptr<IViewHolderBase> create_view_holder(void* parent) override {
+    std::shared_ptr<IViewHolderBase> CreateViewHolder(void* parent) override {
         auto holder = func_(parent);
         return std::make_shared<ViewHolderWrapper<DATA>>(holder);
     }
@@ -120,7 +120,7 @@ class TypedViewHolderCreator : public ViewHolderCreator {
 public:
     TypedViewHolderCreator() = default;
 
-    std::shared_ptr<IViewHolderBase> create_view_holder(void* parent) override {
+    std::shared_ptr<IViewHolderBase> CreateViewHolder(void* parent) override {
         auto holder = std::make_shared<VH>(parent);
         return std::make_shared<ViewHolderWrapper<DATA>>(holder);
     }

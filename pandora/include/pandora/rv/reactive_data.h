@@ -39,12 +39,12 @@ class IReactiveViewHolder;
  * @code
  * class MyReactiveData : public ReactiveData<MyReactiveData> {
  * public:
- *     void bind_reactive_vh(std::shared_ptr<IReactiveViewHolder<MyReactiveData>> vh) override {
+ *     void BindReactiveVh(std::shared_ptr<IReactiveViewHolder<MyReactiveData>> vh) override {
  *         view_holder_ = vh;
  *         // Register for property change notifications
  *     }
  *
- *     void unbind_reactive_vh() override {
+ *     void UnbindReactiveVh() override {
  *         view_holder_.reset();
  *         // Unregister from property change notifications
  *     }
@@ -57,7 +57,7 @@ class IReactiveViewHolder;
  * private:
  *     void notify_property_changed(int property_id) {
  *         if (auto vh = view_holder_.lock()) {
- *             vh->on_property_changed(shared_from_this(), property_id);
+ *             vh->OnPropertyChanged(shared_from_this(), property_id);
  *         }
  *     }
  *
@@ -81,7 +81,7 @@ public:
      *
      * @param view_holder The reactive ViewHolder to bind to
      */
-    virtual void bind_reactive_vh(std::shared_ptr<IReactiveViewHolder<DA>> view_holder) = 0;
+    virtual void BindReactiveVh(std::shared_ptr<IReactiveViewHolder<DA>> view_holder) = 0;
 
     /**
      * @brief Unbind from the current reactive ViewHolder
@@ -89,7 +89,7 @@ public:
      * This is called when the ViewHolder is recycled or destroyed.
      * The data should clear its reference to the ViewHolder.
      */
-    virtual void unbind_reactive_vh() = 0;
+    virtual void UnbindReactiveVh() = 0;
 };
 
 } // namespace rv

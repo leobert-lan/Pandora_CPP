@@ -79,7 +79,7 @@ namespace pandora
                  *
                  * @param view_holder The ViewHolder to bind to
                  */
-                virtual void set_to_view_holder(std::shared_ptr<VH> view_holder) = 0;
+                virtual void SetToViewHolder(std::shared_ptr<VH> view_holder) = 0;
             };
 
             /**
@@ -90,7 +90,7 @@ namespace pandora
             class Data : public D<Data, IViewHolder<Data>>
             {
             public:
-                virtual ~Data() = default;
+                ~Data() override = default;
             };
 
             virtual ~DataSet() = default;
@@ -98,7 +98,7 @@ namespace pandora
             /**
              * @brief Get the number of items in the data set
              */
-            virtual int get_count() const = 0;
+            virtual int GetCount() const = 0;
 
             /**
              * @brief Get item at the specified position
@@ -106,14 +106,14 @@ namespace pandora
              * @param position The position
              * @return The data item, or nullptr if out of range
              */
-            virtual std::shared_ptr<T> get_item(int position) const = 0;
+            virtual std::shared_ptr<T> GetItem(int position) const = 0;
 
             /**
              * @brief Add a data observer
              *
              * @param observer The observer to add (held as weak_ptr)
              */
-            void add_data_observer(std::shared_ptr<DataObserver> observer)
+            void AddDataObserver(std::shared_ptr<DataObserver> observer)
             {
                 std::lock_guard<std::mutex> lock(observers_mutex_);
                 observers_.push_back(observer);
@@ -124,7 +124,7 @@ namespace pandora
              *
              * @param observer The observer to remove
              */
-            void remove_data_observer(const std::shared_ptr<DataObserver>& observer)
+            void RemoveDataObserver(const std::shared_ptr<DataObserver>& observer)
             {
                 std::lock_guard<std::mutex> lock(observers_mutex_);
                 observers_.erase(
@@ -141,12 +141,12 @@ namespace pandora
             /**
              * @brief Get the mapping pool
              */
-            DataVhMappingPool& get_data_vh_mapping_pool()
+            DataVhMappingPool& GetDataVhMappingPool()
             {
                 return mapping_pool_;
             }
 
-            const DataVhMappingPool& get_data_vh_mapping_pool() const
+            const DataVhMappingPool& GetDataVhMappingPool() const
             {
                 return mapping_pool_;
             }
@@ -158,9 +158,9 @@ namespace pandora
              * @return The view type ID
              * @throws PandoraException if type is not registered
              */
-            int get_item_view_type_v2(int pos)
+            int GetItemViewTypeV2(int pos)
             {
-                auto data = get_item(pos);
+                auto data = GetItem(pos);
                 if (!data)
                 {
                     throw PandoraException("Data at position " + std::to_string(pos) + " is null");
@@ -168,7 +168,7 @@ namespace pandora
 
                 try
                 {
-                    return mapping_pool_.get_item_view_type(data);
+                    return mapping_pool_.GetItemViewType(data);
                 }
                 catch (const std::exception& e)
                 {
@@ -184,11 +184,11 @@ namespace pandora
              * @return The created ViewHolder
              * @throws PandoraException if creation fails
              */
-            std::shared_ptr<IViewHolderBase> create_view_holder_v2(void* parent, int view_type)
+            std::shared_ptr<IViewHolderBase> CreateViewHolderV2(void* parent, int view_type)
             {
                 try
                 {
-                    return mapping_pool_.create_view_holder(parent, view_type);
+                    return mapping_pool_.CreateViewHolder(parent, view_type);
                 }
                 catch (const std::exception& e)
                 {
@@ -199,9 +199,9 @@ namespace pandora
             /**
              * @brief Get total view type count
              */
-            int get_view_type_count() const
+            int GetViewTypeCount() const
             {
-                return mapping_pool_.get_view_type_count();
+                return mapping_pool_.GetViewTypeCount();
             }
 
             /**
@@ -250,110 +250,110 @@ namespace pandora
             /**
              * @brief Notify all observers that the entire data set has changed
              */
-            void notify_changed()
+            void NotifyChanged()
             {
-                notify_observers([](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->on_data_set_changed();
+                    obs->OnDataSetChanged();
                 });
             }
 
             /**
              * @brief Notify that an item has changed
              */
-            void notify_item_changed(int position)
+            void NotifyItemChanged(int position)
             {
-                notify_observers([position](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_changed(position);
+                    obs->NotifyItemChanged(position);
                 });
             }
 
             /**
              * @brief Notify that an item has changed with payload
              */
-            void notify_item_changed(int position, std::shared_ptr<void> payload)
+            void NotifyItemChanged(int position, std::shared_ptr<void> payload)
             {
-                notify_observers([position, payload](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position, payload](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_changed(position, payload);
+                    obs->NotifyItemChanged(position, payload);
                 });
             }
 
             /**
              * @brief Notify that a range of items has changed
              */
-            void notify_item_range_changed(int position_start, int item_count)
+            void NotifyItemRangeChanged(int position_start, int item_count)
             {
-                notify_observers([position_start, item_count](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position_start, item_count](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_range_changed(position_start, item_count);
+                    obs->NotifyItemRangeChanged(position_start, item_count);
                 });
             }
 
             /**
              * @brief Notify that a range of items has changed with payload
              */
-            void notify_item_range_changed(int position_start, int item_count, std::shared_ptr<void> payload)
+            void NotifyItemRangeChanged(int position_start, int item_count, std::shared_ptr<void> payload)
             {
-                notify_observers([position_start, item_count, payload](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position_start, item_count, payload](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_range_changed(position_start, item_count, payload);
+                    obs->NotifyItemRangeChanged(position_start, item_count, payload);
                 });
             }
 
             /**
              * @brief Notify that an item has been inserted
              */
-            void notify_item_inserted(int position)
+            void NotifyItemInserted(int position)
             {
-                notify_observers([position](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_inserted(position);
+                    obs->NotifyItemInserted(position);
                 });
             }
 
             /**
              * @brief Notify that an item has been moved
              */
-            void notify_item_moved(int from_position, int to_position)
+            void NotifyItemMoved(int from_position, int to_position)
             {
-                notify_observers([from_position, to_position](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([from_position, to_position](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_moved(from_position, to_position);
+                    obs->NotifyItemMoved(from_position, to_position);
                 });
             }
 
             /**
              * @brief Notify that a range of items has been inserted
              */
-            void notify_item_range_inserted(int position_start, int item_count)
+            void NotifyItemRangeInserted(int position_start, int item_count)
             {
-                notify_observers([position_start, item_count](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position_start, item_count](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_range_inserted(position_start, item_count);
+                    obs->NotifyItemRangeInserted(position_start, item_count);
                 });
             }
 
             /**
              * @brief Notify that an item has been removed
              */
-            void notify_item_removed(int position)
+            void NotifyItemRemoved(int position)
             {
-                notify_observers([position](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_removed(position);
+                    obs->NotifyItemRemoved(position);
                 });
             }
 
             /**
              * @brief Notify that a range of items has been removed
              */
-            void notify_item_range_removed(int position_start, int item_count)
+            void NotifyItemRangeRemoved(int position_start, int item_count)
             {
-                notify_observers([position_start, item_count](std::shared_ptr<DataObserver> obs)
+                NotifyObservers([position_start, item_count](std::shared_ptr<DataObserver> obs)
                 {
-                    obs->notify_item_range_removed(position_start, item_count);
+                    obs->NotifyItemRangeRemoved(position_start, item_count);
                 });
             }
 
@@ -366,13 +366,13 @@ namespace pandora
              * @param view_holder The ViewHolder
              */
             template <typename DATA, typename VH>
-            static void help_set_to_view_holder(std::shared_ptr<D<DATA, VH>> data,
+            static void HelpSetToViewHolder(std::shared_ptr<D<DATA, VH>> data,
                                                 std::shared_ptr<VH> view_holder)
             {
                 // This will be extended in reactive support
                 if (data && view_holder)
                 {
-                    data->set_to_view_holder(view_holder);
+                    data->SetToViewHolder(view_holder);
                 }
             }
 
@@ -386,7 +386,7 @@ namespace pandora
              * Automatically cleans up expired weak_ptr references.
              */
             template <typename Func>
-            void notify_observers(Func&& func)
+            void NotifyObservers(Func&& func)
             {
                 std::lock_guard<std::mutex> lock(observers_mutex_);
 

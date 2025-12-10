@@ -7,25 +7,40 @@
 #include <pandora/wrapper_data_set.h>
 #include <iostream>
 #include <cassert>
+#include <filesystem>
 
 using namespace pandora;
 using namespace pandora::rv;
 
 // ========== Example 1: Simple Single-Type List ==========
 
-class SimpleData : public DataSet<SimpleData>::Data
+class SimpleData final : public DataSet<SimpleData>::Data
 {
 public:
     std::string title;
     int value;
 
-    explicit SimpleData(const std::string& t, int v) : title(t), value(v)
+    explicit SimpleData(const std::string& t, const int v) : title(t), value(v)
     {
     }
 
-    void set_to_view_holder(std::shared_ptr<IViewHolder<Data>> view_holder) override
+    void SetToViewHolder(const std::shared_ptr<IViewHolder<Data>> view_holder) override
     {
-        view_holder->set_data(std::shared_ptr<SimpleData>(this));
+        view_holder->SetData(std::shared_ptr<SimpleData>(this));
+    }
+
+    // 实现 Hash() 成员函数
+    size_t Hash() const
+    {
+        size_t seed = 0;
+        HashCombine(seed, title);
+        HashCombine(seed, value);
+        return seed;
+    }
+
+    bool operator==(const SimpleData& other) const
+    {
+        return title == other.title && value == other.value;
     }
 };
 
@@ -37,7 +52,7 @@ public:
         std::cout << "SimpleViewHolder created" << std::endl;
     }
 
-    void set_data(std::shared_ptr<SimpleData> data) override
+    void SetData(const std::shared_ptr<SimpleData> data) override
     {
         data_ = data;
         if (data_)
@@ -46,12 +61,12 @@ public:
         }
     }
 
-    void on_view_attached_to_window() override
+    void OnViewAttachedToWindow() override
     {
         std::cout << "SimpleViewHolder attached" << std::endl;
     }
 
-    void on_view_detached_from_window() override
+    void OnViewDetachedFromWindow() override
     {
         std::cout << "SimpleViewHolder detached" << std::endl;
     }
@@ -70,7 +85,7 @@ void example_simple_list()
 
     // Create DataSet
     auto real_ds = std::make_shared<RealDataSet<SimpleData>>();
-    auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
+    const auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
 
     // Register ViewHolder creator
     rv_data_set->register_dv_relation<SimpleData>(
@@ -85,18 +100,18 @@ void example_simple_list()
     rv_data_set->Add(SimpleData("Item 2", 200));
     rv_data_set->Add(SimpleData("Item 3", 300));
 
-    std::cout << "Total items: " << rv_data_set->get_count() << std::endl;
+    std::cout << "Total items: " << rv_data_set->GetCount() << std::endl;
 
     // Simulate adapter behavior
-    for (int i = 0; i < rv_data_set->get_count(); i++)
+    for (int i = 0; i < rv_data_set->GetCount(); i++)
     {
-        int view_type = rv_data_set->get_item_view_type_v2(i);
-        auto holder = rv_data_set->create_view_holder_v2(nullptr, view_type);
+        const int view_type = rv_data_set->GetItemViewTypeV2(i);
+        auto holder = rv_data_set->CreateViewHolderV2(nullptr, view_type);
 
-        auto data = rv_data_set->get_item(i);
-        if (auto simple_holder = std::dynamic_pointer_cast<ViewHolderWrapper<SimpleData>>(holder))
+        const auto data = rv_data_set->GetItem(i);
+        if (const auto simple_holder = std::dynamic_pointer_cast<ViewHolderWrapper<SimpleData>>(holder))
         {
-            simple_holder->get_holder()->set_data(data);
+            simple_holder->GetHolder()->SetData(data);
         }
     }
 }
@@ -106,11 +121,23 @@ void example_simple_list()
 class BaseData : public DataSet<BaseData>::Data
 {
 public:
-    virtual ~BaseData() = default;
+    ~BaseData() override = default;
 
-    void set_to_view_holder(std::shared_ptr<IViewHolder<Data>> view_holder) override
+    void SetToViewHolder(const std::shared_ptr<IViewHolder<Data>> view_holder) override
     {
-        view_holder->set_data(std::shared_ptr<BaseData>(this));
+        view_holder->SetData(std::shared_ptr<BaseData>(this));
+    }
+
+    size_t Hash() const
+    {
+        std::size_t seed = 0x5C0A28E4;
+        seed ^= (seed << 6) + (seed >> 2) + 0x2A691606;
+        return seed;
+    }
+
+    bool operator==(const BaseData& other) const
+    {
+        return Hash() == other.Hash();
     }
 };
 
@@ -122,6 +149,20 @@ public:
     explicit TextData(const std::string& t) : text(t)
     {
     }
+
+    // 实现 Hash() 成员函数
+    size_t Hash() const
+    {
+        size_t seed = 0;
+        HashCombine(seed, text);
+        return seed;
+    }
+
+    // 同时也需要实现 operator==
+    bool operator==(const TextData& other) const
+    {
+        return text == other.text;
+    }
 };
 
 class ImageData : public BaseData
@@ -130,12 +171,28 @@ public:
     std::string url;
     int width, height;
 
-    ImageData(const std::string& u, int w, int h) : url(u), width(w), height(h)
+    ImageData(const std::string& u, const int w, const int h) : url(u), width(w), height(h)
     {
+    }
+
+    // 实现 Hash() 成员函数
+    size_t Hash() const
+    {
+        size_t seed = 0;
+        HashCombine(seed, url);
+        HashCombine(seed, width);
+        HashCombine(seed, height);
+        return seed;
+    }
+
+    // 同时也需要实现 operator==
+    bool operator==(const ImageData& other) const
+    {
+        return url == other.url && width == other.width && height == other.height;
     }
 };
 
-class TextViewHolder : public IViewHolder<TextData>
+class TextViewHolder final : public IViewHolder<TextData>
 {
 public:
     explicit TextViewHolder(void* parent)
@@ -143,7 +200,7 @@ public:
         std::cout << "TextViewHolder created" << std::endl;
     }
 
-    void set_data(std::shared_ptr<TextData> data) override
+    void SetData(const std::shared_ptr<TextData> data) override
     {
         if (data)
         {
@@ -151,11 +208,11 @@ public:
         }
     }
 
-    void on_view_attached_to_window() override
+    void OnViewAttachedToWindow() override
     {
     }
 
-    void on_view_detached_from_window() override
+    void OnViewDetachedFromWindow() override
     {
     }
 
@@ -164,7 +221,7 @@ public:
     }
 };
 
-class ImageViewHolder : public IViewHolder<ImageData>
+class ImageViewHolder final : public IViewHolder<ImageData>
 {
 public:
     explicit ImageViewHolder(void* parent)
@@ -172,7 +229,7 @@ public:
         std::cout << "ImageViewHolder created" << std::endl;
     }
 
-    void set_data(std::shared_ptr<ImageData> data) override
+    void SetData(const std::shared_ptr<ImageData> data) override
     {
         if (data)
         {
@@ -180,11 +237,11 @@ public:
         }
     }
 
-    void on_view_attached_to_window() override
+    void OnViewAttachedToWindow() override
     {
     }
 
-    void on_view_detached_from_window() override
+    void OnViewDetachedFromWindow() override
     {
     }
 
@@ -198,7 +255,7 @@ void example_multi_type()
     std::cout << "\n========== Example 2: Multi-Type List ==========\n";
 
     auto real_ds = std::make_shared<RealDataSet<BaseData>>();
-    auto rv_data_set = std::make_shared<PandoraRealRvDataSet<BaseData>>(real_ds);
+    const auto rv_data_set = std::make_shared<PandoraRealRvDataSet<BaseData>>(real_ds);
 
     // Register multiple types
     rv_data_set->register_dv_relation<TextData>(
@@ -215,8 +272,8 @@ void example_multi_type()
     rv_data_set->Add(TextData("Another text"));
     rv_data_set->Add(ImageData("image2.png", 1024, 768));
 
-    std::cout << "Total items: " << rv_data_set->get_count() << std::endl;
-    std::cout << "View type count: " << rv_data_set->get_view_type_count() << std::endl;
+    std::cout << "Total items: " << rv_data_set->GetCount() << std::endl;
+    std::cout << "View type count: " << rv_data_set->GetViewTypeCount() << std::endl;
 }
 
 // ========== Example 3: Observer Pattern ==========
@@ -224,17 +281,17 @@ void example_multi_type()
 class TestObserver : public DataObserverBase
 {
 public:
-    void on_data_set_changed() override
+    void OnDataSetChanged() override
     {
         std::cout << "Observer: Data set changed!" << std::endl;
     }
 
-    void notify_item_inserted(int position) override
+    void NotifyItemInserted(const int position) override
     {
         std::cout << "Observer: Item inserted at position " << position << std::endl;
     }
 
-    void notify_item_removed(int position) override
+    void NotifyItemRemoved(const int position) override
     {
         std::cout << "Observer: Item removed at position " << position << std::endl;
     }
@@ -245,25 +302,25 @@ void example_observer()
     std::cout << "\n========== Example 3: Observer Pattern ==========\n";
 
     auto real_ds = std::make_shared<RealDataSet<SimpleData>>();
-    auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
+    const auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
 
     // Add observer
-    auto observer = std::make_shared<TestObserver>();
-    rv_data_set->add_data_observer(observer);
+    const auto observer = std::make_shared<TestObserver>();
+    rv_data_set->AddDataObserver(observer);
 
     // Add data and notify
     rv_data_set->Add(SimpleData("Item 1", 1));
-    rv_data_set->notify_item_inserted(0);
+    rv_data_set->NotifyItemInserted(0);
 
     rv_data_set->Add(SimpleData("Item 2", 2));
-    rv_data_set->notify_item_inserted(1);
+    rv_data_set->NotifyItemInserted(1);
 
     // Remove and notify
     rv_data_set->RemoveAtPos(0);
-    rv_data_set->notify_item_removed(0);
+    rv_data_set->NotifyItemRemoved(0);
 
     // Notify full change
-    rv_data_set->notify_changed();
+    rv_data_set->NotifyChanged();
 }
 
 // ========== Example 4: Wrapper DataSet (Hierarchical) ==========
@@ -274,12 +331,12 @@ void example_wrapper_dataset()
 
     // Create wrapper
     auto wrapper_ds = std::make_shared<WrapperDataSet<SimpleData>>();
-    auto rv_data_set = std::make_shared<PandoraWrapperRvDataSet<SimpleData>>(wrapper_ds);
+    const auto rv_data_set = std::make_shared<PandoraWrapperRvDataSet<SimpleData>>(wrapper_ds);
 
     // Create child adapters
-    auto header_ds = std::make_shared<RealDataSet<SimpleData>>();
-    auto content_ds = std::make_shared<RealDataSet<SimpleData>>();
-    auto footer_ds = std::make_shared<RealDataSet<SimpleData>>();
+    const auto header_ds = std::make_shared<RealDataSet<SimpleData>>();
+    const auto content_ds = std::make_shared<RealDataSet<SimpleData>>();
+    const auto footer_ds = std::make_shared<RealDataSet<SimpleData>>();
 
     // Add data to children
     header_ds->Add(SimpleData("Header", 0));
@@ -293,12 +350,12 @@ void example_wrapper_dataset()
     rv_data_set->AddSub(std::unique_ptr<RealDataSet<SimpleData>>(content_ds.get()));
     rv_data_set->AddSub(std::unique_ptr<RealDataSet<SimpleData>>(footer_ds.get()));
 
-    std::cout << "Total items in wrapper: " << rv_data_set->get_count() << std::endl;
+    std::cout << "Total items in wrapper: " << rv_data_set->GetCount() << std::endl;
 
     // Access all items
-    for (int i = 0; i < rv_data_set->get_count(); i++)
+    for (int i = 0; i < rv_data_set->GetCount(); i++)
     {
-        auto item = rv_data_set->get_item(i);
+        auto item = rv_data_set->GetItem(i);
         if (item)
         {
             std::cout << "Position " << i << ": " << item->title << std::endl;
@@ -313,10 +370,10 @@ void example_transaction()
     std::cout << "\n========== Example 5: Transaction ==========\n";
 
     auto real_ds = std::make_shared<RealDataSet<SimpleData>>();
-    auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
+    const auto rv_data_set = std::make_shared<PandoraRealRvDataSet<SimpleData>>(real_ds);
 
-    auto observer = std::make_shared<TestObserver>();
-    rv_data_set->add_data_observer(observer);
+    const auto observer = std::make_shared<TestObserver>();
+    rv_data_set->AddDataObserver(observer);
 
     std::cout << "Adding items in transaction (should notify once):" << std::endl;
 
@@ -332,7 +389,7 @@ void example_transaction()
     // End transaction (triggers single notification)
     rv_data_set->EndTransaction();
 
-    std::cout << "Total items: " << rv_data_set->get_count() << std::endl;
+    std::cout << "Total items: " << rv_data_set->GetCount() << std::endl;
 }
 
 // ========== Main ==========

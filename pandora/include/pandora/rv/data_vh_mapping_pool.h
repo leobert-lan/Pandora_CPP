@@ -104,7 +104,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
 
         for (auto it = view_type_cache_.begin(); it != view_type_cache_.end();) {
-            if (it->second && it->second->work_for(type_idx)) {
+            if (it->second && it->second->WorkFor(type_idx)) {
                 Logger::i("DataVhMappingPool", "Removing relation for type");
                 it = view_type_cache_.erase(it);
             } else {
@@ -125,23 +125,23 @@ public:
      * @throws std::runtime_error if type is not registered
      */
     template<typename T>
-    int get_item_view_type(std::shared_ptr<T> data) {
+    int GetItemViewType(std::shared_ptr<T> data) {
         std::type_index type_idx(typeid(T));
 
         // Find the typed cell for this data type
         auto typed_it = typed_cells_.find(type_idx);
         if (typed_it != typed_cells_.end()) {
             auto typed_cell = std::static_pointer_cast<TypedTypeCell<T>>(typed_it->second);
-            return typed_cell->get_item_view_type(data);
+            return typed_cell->GetItemViewType(data);
         }
 
         // Fallback: search in view_type_cache_
         for (const auto& pair : view_type_cache_) {
-            if (pair.second && pair.second->work_for(type_idx)) {
+            if (pair.second && pair.second->WorkFor(type_idx)) {
                 // Found it, but we need the typed version for proper handling
                 // This shouldn't happen in normal usage
                 Logger::w("DataVhMappingPool", "Type found in cache but not in typed_cells");
-                return pair.second->get_item_view_type(DVRelation<T>::SINGLE_TYPE_TOKEN);
+                return pair.second->GetItemViewType(DVRelation<T>::SINGLE_TYPE_TOKEN);
             }
         }
 
@@ -154,13 +154,13 @@ public:
     /**
      * @brief Get total view type count
      */
-    int get_view_type_count() const {
+    int GetViewTypeCount() const {
         std::lock_guard<std::mutex> lock(mutex_);
 
         int count = 0;
         for (const auto& pair : view_type_cache_) {
             if (pair.second) {
-                count += pair.second->get_sub_type_count();
+                count += pair.second->GetSubTypeCount();
             }
         }
 
@@ -178,7 +178,7 @@ public:
      * @param view_type The view type ID
      * @return The created ViewHolder
      */
-    std::shared_ptr<IViewHolderBase> create_view_holder(void* parent, int view_type) {
+    std::shared_ptr<IViewHolderBase> CreateViewHolder(void* parent, int view_type) {
         try {
             int index = view_type / max_size_;
             int sub_index = view_type % max_size_;
@@ -190,11 +190,11 @@ public:
 
             auto it = view_type_cache_.find(index);
             if (it != view_type_cache_.end() && it->second) {
-                auto creator_func = it->second->get_vh_creator_func(sub_index);
+                auto creator_func = it->second->GetVhCreatorFunc(sub_index);
                 if (creator_func) {
                     auto creator = creator_func();
                     if (creator) {
-                        return creator->create_view_holder(parent);
+                        return creator->CreateViewHolder(parent);
                     }
                 }
             }
@@ -206,11 +206,11 @@ public:
 
             // Use error cell if available
             if (internal_error_cell_) {
-                auto creator_func = internal_error_cell_->get_vh_creator_func(0);
+                auto creator_func = internal_error_cell_->GetVhCreatorFunc(0);
                 if (creator_func) {
                     auto creator = creator_func();
                     if (creator) {
-                        return creator->create_view_holder(parent);
+                        return creator->CreateViewHolder(parent);
                     }
                 }
             }
@@ -230,7 +230,7 @@ public:
             std::type_index(typeid(void)),
             1
         );
-        internal_error_cell_->register_creator(
+        internal_error_cell_->RegisterCreator(
             DVRelation<void>::SINGLE_TYPE_TOKEN,
             [creator]() { return creator; }
         );
@@ -259,7 +259,7 @@ public:
             max_size_ = other.max_size_;
             for (auto& pair : view_type_cache_) {
                 if (pair.second) {
-                    pair.second->update_max_size(max_size_);
+                    pair.second->UpdateMaxSize(max_size_);
                 }
             }
         }
@@ -277,7 +277,7 @@ private:
             max_size_ *= 2;
             for (auto& pair : view_type_cache_) {
                 if (pair.second) {
-                    pair.second->update_max_size(max_size_);
+                    pair.second->UpdateMaxSize(max_size_);
                 }
             }
         }

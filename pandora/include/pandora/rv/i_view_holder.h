@@ -40,16 +40,16 @@ class IViewHolderVisitor;
  * @code
  * class MyViewHolder : public IViewHolder<MyData> {
  * public:
- *     void set_data(std::shared_ptr<MyData> data) override {
+ *     void SetData(std::shared_ptr<MyData> data) override {
  *         data_ = data;
  *         // Update UI with data
  *     }
  *
- *     void on_view_attached_to_window() override {
+ *     void OnViewAttachedToWindow() override {
  *         // Start animations, register listeners
  *     }
  *
- *     void on_view_detached_from_window() override {
+ *     void OnViewDetachedFromWindow() override {
  *         // Stop animations, unregister listeners
  *     }
  * };
@@ -68,7 +68,7 @@ public:
      *
      * @param data The data to be displayed by this ViewHolder
      */
-    virtual void set_data(std::shared_ptr<DATA> data) = 0;
+    virtual void SetData(std::shared_ptr<DATA> data) = 0;
 
     /**
      * @brief Called when the view is attached to the window
@@ -76,7 +76,7 @@ public:
      * This is the ideal place to start animations, register listeners,
      * or perform other operations that require the view to be visible.
      */
-    virtual void on_view_attached_to_window() = 0;
+    virtual void OnViewAttachedToWindow() = 0;
 
     /**
      * @brief Called when the view is detached from the window
@@ -84,7 +84,7 @@ public:
      * This is the ideal place to stop animations, unregister listeners,
      * or perform cleanup to prevent memory leaks.
      */
-    virtual void on_view_detached_from_window() = 0;
+    virtual void OnViewDetachedFromWindow() = 0;
 
     /**
      * @brief Accept a visitor for double dispatch
@@ -146,8 +146,8 @@ class IViewHolderBase {
 public:
     virtual ~IViewHolderBase() = default;
 
-    virtual void on_view_attached_to_window() = 0;
-    virtual void on_view_detached_from_window() = 0;
+    virtual void OnViewAttachedToWindow() = 0;
+    virtual void OnViewDetachedFromWindow() = 0;
     virtual void accept(IViewHolderVisitor& visitor) = 0;
 
 protected:
@@ -166,19 +166,19 @@ public:
     explicit ViewHolderWrapper(std::shared_ptr<IViewHolder<DATA>> holder)
         : holder_(std::move(holder)) {}
 
-    void on_view_attached_to_window() override {
-        if (holder_) holder_->on_view_attached_to_window();
+    void OnViewAttachedToWindow() override {
+        if (holder_) holder_->OnViewAttachedToWindow();
     }
 
-    void on_view_detached_from_window() override {
-        if (holder_) holder_->on_view_detached_from_window();
+    void OnViewDetachedFromWindow() override {
+        if (holder_) holder_->OnViewDetachedFromWindow();
     }
 
     void accept(IViewHolderVisitor& visitor) override {
         if (holder_) holder_->accept(visitor);
     }
 
-    std::shared_ptr<IViewHolder<DATA>> get_holder() const {
+    std::shared_ptr<IViewHolder<DATA>> GetHolder() const {
         return holder_;
     }
 

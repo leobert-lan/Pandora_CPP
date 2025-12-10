@@ -45,12 +45,12 @@ public:
     /**
      * @brief Get the data class type index
      */
-    virtual std::type_index get_data_type() const = 0;
+    virtual std::type_index GetDataType() const = 0;
 
     /**
      * @brief Get the number of sub-types (1 for single-type, N for multi-type)
      */
-    virtual int one_to_n() const = 0;
+    virtual int OneToN() const = 0;
 
     /**
      * @brief Get sub-type token for the given data instance
@@ -58,7 +58,7 @@ public:
      * @param data The data instance
      * @return A string token identifying the sub-type
      */
-    virtual std::string sub_type_token(std::shared_ptr<T> data) const = 0;
+    virtual std::string SubTypeToken(std::shared_ptr<T> data) const = 0;
 
     /**
      * @brief Get ViewHolder creator for the given sub-type token
@@ -66,7 +66,7 @@ public:
      * @param sub_type_token The sub-type token
      * @return The ViewHolder creator
      */
-    virtual std::shared_ptr<ViewHolderCreator> get_vh_creator(const std::string& sub_type_token) const = 0;
+    virtual std::shared_ptr<ViewHolderCreator> GetVhCreator(const std::string& sub_type_token) const = 0;
 };
 
 /**
@@ -80,19 +80,19 @@ public:
     DataVhRelation(std::type_index data_type, std::shared_ptr<ViewHolderCreator> creator)
         : data_type_(data_type), creator_(std::move(creator)) {}
 
-    std::type_index get_data_type() const override {
+    std::type_index GetDataType() const override {
         return data_type_;
     }
 
-    int one_to_n() const override {
+    int OneToN() const override {
         return 1;
     }
 
-    std::string sub_type_token(std::shared_ptr<T> data) const override {
+    std::string SubTypeToken(std::shared_ptr<T> data) const override {
         return DVRelation<T>::SINGLE_TYPE_TOKEN;
     }
 
-    std::shared_ptr<ViewHolderCreator> get_vh_creator(const std::string& sub_type_token) const override {
+    std::shared_ptr<ViewHolderCreator> GetVhCreator(const std::string& sub_type_token) const override {
         return creator_;
     }
 
@@ -123,21 +123,21 @@ public:
     /**
      * @brief Check if this cell works for the given data type
      */
-    bool work_for(std::type_index type) const {
+    bool WorkFor(std::type_index type) const {
         return data_type_ == type;
     }
 
     /**
      * @brief Update the max size for view type calculation
      */
-    void update_max_size(int max_size) {
+    void UpdateMaxSize(int max_size) {
         max_size_ = max_size;
     }
 
     /**
      * @brief Get the number of sub-types
      */
-    int get_sub_type_count() const {
+    int GetSubTypeCount() const {
         return sub_type_count_;
     }
 
@@ -147,7 +147,7 @@ public:
      * @param token The sub-type token
      * @return The calculated view type ID
      */
-    int get_item_view_type(const std::string& token) {
+    int GetItemViewType(const std::string& token) {
         // Find or add the token
         auto it = std::find(sub_type_tokens_.begin(), sub_type_tokens_.end(), token);
         if (it == sub_type_tokens_.end()) {
@@ -165,7 +165,7 @@ public:
      * @param sub_type_index The index of the sub-type
      * @return The creator function
      */
-    std::function<std::shared_ptr<ViewHolderCreator>()> get_vh_creator_func(int sub_type_index) const {
+    std::function<std::shared_ptr<ViewHolderCreator>()> GetVhCreatorFunc(int sub_type_index) const {
         if (sub_type_index >= 0 && sub_type_index < static_cast<int>(sub_type_tokens_.size())) {
             return creator_funcs_[sub_type_index];
         }
@@ -175,7 +175,7 @@ public:
     /**
      * @brief Register a creator function for a sub-type token
      */
-    void register_creator(const std::string& token, std::function<std::shared_ptr<ViewHolderCreator>()> func) {
+    void RegisterCreator(const std::string& token, std::function<std::shared_ptr<ViewHolderCreator>()> func) {
         auto it = std::find(sub_type_tokens_.begin(), sub_type_tokens_.end(), token);
         if (it == sub_type_tokens_.end()) {
             sub_type_tokens_.push_back(token);
@@ -186,8 +186,8 @@ public:
         }
     }
 
-    int get_index() const { return index_; }
-    std::type_index get_data_type() const { return data_type_; }
+    int GetIndex() const { return index_; }
+    std::type_index GetDataType() const { return data_type_; }
 
 private:
     int index_;                                                          // Base index assigned by pool
@@ -208,37 +208,37 @@ template<typename T>
 class TypedTypeCell {
 public:
     TypedTypeCell(int index, std::shared_ptr<DVRelation<T>> relation)
-        : cell_(index, relation->get_data_type(), relation->one_to_n()),
+        : cell_(index, relation->GetDataType(), relation->OneToN()),
           relation_(std::move(relation)) {}
 
-    TypeCell& get_cell() { return cell_; }
-    const TypeCell& get_cell() const { return cell_; }
+    TypeCell& GetCell() { return cell_; }
+    const TypeCell& GetCell() const { return cell_; }
 
-    std::shared_ptr<DVRelation<T>> get_relation() const { return relation_; }
+    std::shared_ptr<DVRelation<T>> GetRelation() const { return relation_; }
 
     /**
      * @brief Get item view type for the given data
      */
-    int get_item_view_type(std::shared_ptr<T> data) {
-        std::string token = relation_->sub_type_token(data);
+    int GetItemViewType(std::shared_ptr<T> data) {
+        std::string token = relation_->SubTypeToken(data);
 
         // Register creator if not already registered
-        if (!has_creator_for_token(token)) {
-            register_creator_for_token(token);
+        if (!HasCreatorForToken(token)) {
+            RegisterCreatorForToken(token);
         }
 
-        return cell_.get_item_view_type(token);
+        return cell_.GetItemViewType(token);
     }
 
 private:
-    bool has_creator_for_token(const std::string& token) const {
-        // Simple check - in real implementation, TypeCell would track this
+    bool HasCreatorForToken(const std::string& token) const {
+        // Simple check - in real implementation, TypeCell would track this  todo
         return false;  // Always register for simplicity
     }
 
-    void register_creator_for_token(const std::string& token) {
-        auto creator = relation_->get_vh_creator(token);
-        cell_.register_creator(token, [creator]() { return creator; });
+    void RegisterCreatorForToken(const std::string& token) {
+        auto creator = relation_->GetVhCreator(token);
+        cell_.RegisterCreator(token, [creator]() { return creator; });
     }
 
     TypeCell cell_;

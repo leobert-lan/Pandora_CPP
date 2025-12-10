@@ -35,6 +35,12 @@ template <typename T>
 struct HasEqualOperator<T, std::void_t<decltype(std::declval<T>() == std::declval<T>())>> : std::true_type {};
 
 /**
+ * Helper trait for dependent false in static_assert
+ */
+template <typename T>
+struct DependentFalse : std::false_type {};
+
+/**
  * Content hasher for Pandora types
  * Users can specialize this template for custom types
  *
@@ -53,10 +59,11 @@ struct HasEqualOperator<T, std::void_t<decltype(std::declval<T>() == std::declva
 template <typename T, typename Enable = void>
 struct ContentHasher {
     // Default implementation - compile error with helpful message
-    static_assert(sizeof(T) == 0,
+    static_assert(DependentFalse<T>::value,
         "ContentHasher not specialized for this type. "
         "Please provide a specialization of pandora::ContentHasher<T> "
-        "or implement a Hash() member function in your type.");
+        "or implement a Hash() member function in your type. "
+        "Check the compiler error for the actual type T.");
 
     size_t operator()(const T& obj) const {
         return 0; // Never reached
@@ -101,7 +108,8 @@ template <typename T, typename Enable = void>
 struct ContentEquals {
     // Default implementation using operator==
     static_assert(HasEqualOperator<T>::value,
-        "Type must have operator== or provide a specialization of pandora::ContentEquals<T>");
+        "Type must have operator== or provide a specialization of pandora::ContentEquals<T>. "
+        "Check the compiler error message above for the actual type T being instantiated.");
 
     bool operator()(const T& lhs, const T& rhs) const {
         return lhs == rhs;

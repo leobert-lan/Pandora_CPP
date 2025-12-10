@@ -38,16 +38,16 @@ namespace rv {
  * @code
  * class MyReactiveViewHolder : public IReactiveViewHolder<MyReactiveData> {
  * public:
- *     void set_data(std::shared_ptr<MyReactiveData> data) override {
+ *     void SetData(std::shared_ptr<MyReactiveData> data) override {
  *         data_ = data;
  *         update_ui();
  *     }
  *
- *     std::shared_ptr<ReactiveData<MyReactiveData>> get_reactive_data_if_exist() override {
+ *     std::shared_ptr<ReactiveData<MyReactiveData>> GetReactiveDataIfExist() override {
  *         return data_;
  *     }
  *
- *     void on_property_changed(std::shared_ptr<MyReactiveData> data, int property_id) override {
+ *     void OnPropertyChanged(std::shared_ptr<MyReactiveData> data, int property_id) override {
  *         // Update only the changed property's UI
  *         switch (property_id) {
  *             case MyReactiveData::PROPERTY_NAME:
@@ -69,7 +69,7 @@ public:
      *
      * @return The reactive data, or nullptr if not reactive or not bound
      */
-    virtual std::shared_ptr<ReactiveData<DATA>> get_reactive_data_if_exist() = 0;
+    virtual std::shared_ptr<ReactiveData<DATA>> GetReactiveDataIfExist() = 0;
 
     /**
      * @brief Called when a property of the bound data changes
@@ -80,7 +80,7 @@ public:
      * @param data The data that changed
      * @param property_id The ID of the property that changed
      */
-    virtual void on_property_changed(std::shared_ptr<DATA> data, int property_id) = 0;
+    virtual void OnPropertyChanged(std::shared_ptr<DATA> data, int property_id) = 0;
 };
 
 /**
@@ -94,9 +94,8 @@ public:
     template<typename DATA>
     void visit(IReactiveViewHolder<DATA>* holder) {
         if (holder) {
-            auto old_binding = holder->get_reactive_data_if_exist();
-            if (old_binding) {
-                old_binding->unbind_reactive_vh();
+            if (auto old_binding = holder->GetReactiveDataIfExist()) {
+                old_binding->UnbindReactiveVh();
             }
         }
     }
@@ -113,14 +112,13 @@ public:
     template<typename DATA>
     void visit(IReactiveViewHolder<DATA>* holder) {
         if (holder) {
-            auto reactive_data = holder->get_reactive_data_if_exist();
-            if (reactive_data) {
+            if (auto reactive_data = holder->GetReactiveDataIfExist()) {
                 try {
                     auto holder_ptr = std::dynamic_pointer_cast<IReactiveViewHolder<DATA>>(
                         holder->shared_from_this()
                     );
                     if (holder_ptr) {
-                        reactive_data->bind_reactive_vh(holder_ptr);
+                        reactive_data->BindReactiveVh(holder_ptr);
                     }
                 } catch (const std::exception& e) {
                     Logger::e("MakeSureBindVisitor",
@@ -140,7 +138,7 @@ inline MakeSureBindVisitor MAKE_SURE_BIND_VISITOR;
  *
  * This function ensures proper unbinding and binding when setting data
  * to a reactive ViewHolder. It should be used instead of directly calling
- * set_data() when reactive binding is involved.
+ * SetData() when reactive binding is involved.
  *
  * @tparam DATA The data type
  * @tparam VH The ViewHolder type
@@ -148,7 +146,7 @@ inline MakeSureBindVisitor MAKE_SURE_BIND_VISITOR;
  * @param view_holder The ViewHolder to set data to
  */
 template<typename DATA, typename VH>
-void help_set_to_reactive_view_holder(std::shared_ptr<ReactiveData<DATA>> data,
+void HelpSetToReactiveViewHolder(std::shared_ptr<ReactiveData<DATA>> data,
                                      std::shared_ptr<VH> view_holder) {
     static_assert(std::is_base_of<IReactiveViewHolder<DATA>, VH>::value,
                   "VH must inherit from IReactiveViewHolder<DATA>");
@@ -164,7 +162,7 @@ void help_set_to_reactive_view_holder(std::shared_ptr<ReactiveData<DATA>> data,
     if (data) {
         auto data_ptr = std::dynamic_pointer_cast<DATA>(data);
         if (data_ptr) {
-            view_holder->set_data(data_ptr);
+            view_holder->SetData(data_ptr);
         }
     }
 

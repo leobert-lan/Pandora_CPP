@@ -68,17 +68,17 @@ public:
     /**
      * @brief Get the underlying data adapter
      */
-    std::shared_ptr<DS> get_data_set() const {
+    std::shared_ptr<DS> GetDataSet() const {
         return data_set_;
     }
 
     // ========== DataSet Interface Implementation ==========
 
-    int get_count() const override {
+    int GetCount() const override {
         return data_set_->GetDataCount();
     }
 
-    std::shared_ptr<T> get_item(int position) const override {
+    std::shared_ptr<T> GetItem(int position) const override {
         T* raw_ptr = data_set_->GetDataByIndex(position);
         // Non-owning shared_ptr for compatibility with DataSet interface
         return raw_ptr ? std::shared_ptr<T>(raw_ptr, [](T*){}) : nullptr;
