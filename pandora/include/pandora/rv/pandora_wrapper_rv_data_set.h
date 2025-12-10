@@ -69,8 +69,8 @@ public:
      *
      * @param group_index The group index
      */
-    void set_group_index(int group_index) {
-        this->data_set_->set_group_index(group_index);
+    void SetGroupIndex(int group_index) {
+        this->data_set_->SetGroupIndex(group_index);
     }
 
     /**
@@ -78,8 +78,8 @@ public:
      *
      * @param sub The child adapter to add
      */
-    void add_sub(std::shared_ptr<PandoraBoxAdapter<T>> sub) {
-        this->data_set_->add_child(sub);
+    void AddSub(std::unique_ptr<PandoraBoxAdapter<T>> sub) {
+        this->data_set_->AddChild(std::move(sub));
     }
 
     /**
@@ -90,7 +90,7 @@ public:
      *
      * @param pool The mapping pool to merge
      */
-    void merge(const DataVhMappingPool& pool) {
+    void Merge(const DataVhMappingPool& pool) {
         this->get_data_vh_mapping_pool().merge(pool);
     }
 
@@ -99,8 +99,8 @@ public:
      *
      * @param sub The child adapter to remove
      */
-    void remove_sub(std::shared_ptr<PandoraBoxAdapter<T>> sub) {
-        this->data_set_->remove_child(sub);
+    void RemoveSub(PandoraBoxAdapter<T>* sub) {
+        this->data_set_->RemoveChild(sub);
     }
 
     /**
@@ -109,15 +109,15 @@ public:
      * @param index The child index
      * @return The child adapter, or nullptr if out of range
      */
-    std::shared_ptr<PandoraBoxAdapter<T>> get_child(int index) {
-        return this->data_set_->get_child(index);
+    PandoraBoxAdapter<T>* GetChild(int index) {
+        return this->data_set_->GetChild(index);
     }
 
     /**
      * @brief Clear all child adapters
      */
-    void clear_all_children() {
-        this->data_set_->clear_all_children();
+    void ClearAllChildren() {
+        this->data_set_->ClearAllChildren();
     }
 };
 

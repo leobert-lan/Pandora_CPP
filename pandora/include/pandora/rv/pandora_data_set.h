@@ -205,79 +205,88 @@ public:
     /**
      * @brief Get the number of data items
      */
-    int GetDataCount() const {
+    int GetDataCount() const override
+    {
         return data_set_->GetDataCount();
     }
 
     /**
      * @brief Get data by index (returns raw pointer wrapped in shared_ptr for safety)
      */
-    std::shared_ptr<T> GetDataByIndex(int index) {
-        T* raw_ptr = data_set_->GetDataByIndex(index);
-        // Note: We don't own this pointer, so we use a non-deleting shared_ptr
-        return std::shared_ptr<T>(raw_ptr, [](T*){});
+    T* GetDataByIndex(int index) override
+    {
+        return data_set_->GetDataByIndex(index);
     }
 
     /**
      * @brief Clear all data
      */
-    void ClearAllData() {
+    void ClearAllData() override
+    {
         data_set_->ClearAllData();
     }
 
     /**
      * @brief Add an item
      */
-    void Add(const T& item) {
+    void Add(const T& item) override
+    {
         data_set_->Add(item);
     }
 
     /**
      * @brief Add an item at specific position
      */
-    void Add(int pos, const T& item) {
+    void Add(int pos, const T& item) override
+    {
         data_set_->Add(pos, item);
     }
 
     /**
      * @brief Add multiple items
      */
-    void AddAll(const std::vector<T>& collection) {
+    void AddAll(const std::vector<T>& collection) override
+    {
         data_set_->AddAll(collection);
     }
 
     /**
      * @brief Remove an item
      */
-    void Remove(const T& item) {
+    void Remove(const T& item) override
+    {
         data_set_->Remove(item);
     }
 
     /**
      * @brief Remove item at position
      */
-    void RemoveAtPos(int position) {
+    void RemoveAtPos(int position) override
+    {
         data_set_->RemoveAtPos(position);
     }
 
     /**
      * @brief Replace item at position if exists
      */
-    bool ReplaceAtPosIfExist(int position, const T& item) {
+    bool ReplaceAtPosIfExist(int position, const T& item) override
+    {
         return data_set_->ReplaceAtPosIfExist(position, item);
     }
 
     /**
      * @brief Set data collection
      */
-    void SetData(const std::vector<T>& collection) {
+    void SetData(const std::vector<T>& collection) override
+    {
         data_set_->SetData(collection);
     }
 
     /**
      * @brief Find index of item
      */
-    int IndexOf(const T& item) const {
+    int IndexOf(const T& item) const override
+    {
         return data_set_->IndexOf(item);
     }
 
