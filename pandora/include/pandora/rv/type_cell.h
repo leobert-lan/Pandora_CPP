@@ -186,6 +186,14 @@ public:
         }
     }
 
+    /**
+     * @brief Check if a creator is registered for the given token
+     */
+    bool HasCreatorForToken(const std::string& token) const {
+        const auto it = std::find(sub_type_tokens_.begin(), sub_type_tokens_.end(), token);
+        return it != sub_type_tokens_.end();
+    }
+
     int GetIndex() const { return index_; }
     std::type_index GetDataType() const { return data_type_; }
 
@@ -232,8 +240,7 @@ public:
 
 private:
     bool HasCreatorForToken(const std::string& token) const {
-        // Simple check - in real implementation, TypeCell would track this  todo
-        return false;  // Always register for simplicity
+        return cell_->HasCreatorForToken(token);
     }
 
     void RegisterCreatorForToken(const std::string& token) {

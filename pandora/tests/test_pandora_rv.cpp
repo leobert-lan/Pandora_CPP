@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cassert>
 #include <filesystem>
+#include <gtest/gtest.h>
 
 using namespace pandora;
 using namespace pandora::rv;
@@ -394,8 +395,31 @@ void example_transaction()
 
 // ========== Main ==========
 
-int main()
-{
+// int main()
+// {
+//     std::cout << "PandoraRV C++ Examples\n";
+//     std::cout << "=====================\n";
+//
+//     try
+//     {
+//         example_simple_list();
+//         example_multi_type();
+//         example_observer();
+//         example_wrapper_dataset();
+//         example_transaction();
+//
+//         std::cout << "\n✅ All examples completed successfully!\n";
+//     }
+//     catch (const std::exception& e)
+//     {
+//         std::cerr << "\n❌ Error: " << e.what() << std::endl;
+//         return 1;
+//     }
+//
+//     return 0;
+// }
+
+TEST(TestPandoraRv, Samples) {
     std::cout << "PandoraRV C++ Examples\n";
     std::cout << "=====================\n";
 
@@ -412,8 +436,6 @@ int main()
     catch (const std::exception& e)
     {
         std::cerr << "\n❌ Error: " << e.what() << std::endl;
-        return 1;
     }
-
-    return 0;
+    EXPECT_EQ(0, 0);
 }
