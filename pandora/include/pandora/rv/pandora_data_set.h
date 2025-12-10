@@ -75,11 +75,13 @@ public:
     // ========== DataSet Interface Implementation ==========
 
     int get_count() const override {
-        return get_data_count();
+        return data_set_->GetDataCount();
     }
 
     std::shared_ptr<T> get_item(int position) const override {
-        return data_set_->get_data_by_index(position);
+        T* raw_ptr = data_set_->GetDataByIndex(position);
+        // Non-owning shared_ptr for compatibility with DataSet interface
+        return raw_ptr ? std::shared_ptr<T>(raw_ptr, [](T*){}) : nullptr;
     }
 
     // ========== PandoraBoxAdapter Delegation ==========
@@ -87,37 +89,37 @@ public:
     /**
      * @brief Start a transaction for batch operations
      */
-    void start_transaction() {
-        data_set_->start_transaction();
+    void StartTransaction() {
+        data_set_->StartTransaction();
     }
 
     /**
      * @brief End transaction and notify observers
      */
-    void end_transaction() {
-        data_set_->end_transaction();
+    void EndTransaction() {
+        data_set_->EndTransaction();
     }
 
     /**
      * @brief End transaction silently without notifications
      */
-    void end_transaction_silently() {
-        data_set_->end_transaction_silently();
+    void EndTransactionSilently() {
+        data_set_->EndTransactionSilently();
     }
 
     /**
      * @brief Get the alias of this adapter
      */
-    std::string get_alias() const {
-        return data_set_->get_alias();
+    std::string GetAlias() const {
+        return data_set_->GetAlias();
     }
 
     /**
      * @brief Set the alias of this adapter
      */
-    void set_alias(const std::string& alias) {
+    void SetAlias(const std::string& alias) {
         try {
-            data_set_->set_alias(alias);
+            data_set_->SetAlias(alias);
         } catch (const PandoraException& e) {
             Logger::e("PandoraDataSet", std::string("Error setting alias: ") + e.what());
             throw;
@@ -127,141 +129,156 @@ public:
     /**
      * @brief Retrieve adapter by data index
      */
-    std::shared_ptr<PandoraBoxAdapter<T>> retrieve_adapter_by_data_index(int index) {
-        return data_set_->retrieve_adapter_by_data_index(index);
+    PandoraBoxAdapter<T>* RetrieveAdapterByDataIndex(int index) {
+        return data_set_->RetrieveAdapterByDataIndex(index);
     }
 
     /**
      * @brief Retrieve adapter and local index by data index
      */
-    std::pair<std::shared_ptr<PandoraBoxAdapter<T>>, int>
-    retrieve_adapter_by_data_index2(int index) {
-        return data_set_->retrieve_adapter_by_data_index2(index);
+    std::pair<PandoraBoxAdapter<T>*, int>
+    RetrieveAdapterByDataIndex2(int index) {
+        return data_set_->RetrieveAdapterByDataIndex2(index);
     }
 
     /**
      * @brief Get the start index in parent
      */
-    int get_start_index() const {
-        return data_set_->get_start_index();
+    int GetStartIndex() const {
+        return data_set_->GetStartIndex();
     }
 
     /**
      * @brief Find child adapter by alias
      */
-    std::shared_ptr<PandoraBoxAdapter<T>> find_by_alias(const std::string& target_alias) {
-        return data_set_->find_by_alias(target_alias);
+    PandoraBoxAdapter<T>* FindByAlias(const std::string& target_alias) {
+        return data_set_->FindByAlias(target_alias);
     }
 
     /**
      * @brief Run foreach action on all data items
      */
     template<typename Consumer>
-    void run_foreach(Consumer&& action) {
-        data_set_->run_foreach(std::forward<Consumer>(action));
-    }
-
-    /**
-     * @brief Accept a type visitor
-     */
-    template<typename R>
-    R accept(int pos, TypeVisitor<R>& type_visitor) {
-        return data_set_->accept(pos, type_visitor);
+    void RunForeach(Consumer&& action) {
+        data_set_->RunForeach(std::forward<Consumer>(action));
     }
 
     /**
      * @brief Get group index
      */
-    int get_group_index() const {
-        return data_set_->get_group_index();
+    int GetGroupIndex() const {
+        return data_set_->GetGroupIndex();
     }
 
     /**
-     * @brief Add a child adapter
+     * @brief Add a child adapter (using unique_ptr as per PandoraBoxAdapter API)
      */
-    void add_child(std::shared_ptr<PandoraBoxAdapter<T>> sub) {
-        data_set_->add_child(sub);
+    void AddChild(std::unique_ptr<PandoraBoxAdapter<T>> sub) {
+        data_set_->AddChild(std::move(sub));
     }
 
     /**
      * @brief Check if bound to parent
      */
-    bool has_bind_2_parent() const {
-        return data_set_->has_bind_2_parent();
+    bool HasBindToParent() const {
+        return data_set_->HasBindToParent();
     }
 
     /**
      * @brief Remove from original parent
      */
-    void remove_from_original_parent() {
-        data_set_->remove_from_original_parent();
+    void RemoveFromOriginalParent() {
+        data_set_->NotifyHasRemoveFromParent();
     }
 
     /**
-     * @brief Remove a child adapter
+     * @brief Remove a child adapter (using raw pointer as per PandoraBoxAdapter API)
      */
-    void remove_child(std::shared_ptr<PandoraBoxAdapter<T>> sub) {
-        data_set_->remove_child(sub);
+    void RemoveChild(PandoraBoxAdapter<T>* sub) {
+        data_set_->RemoveChild(sub);
     }
 
-    // ========== DataAdapter Interface (Delegation) ==========
-    // These methods delegate to the underlying data_set_
-    // They are NOT overrides of DataAdapter base class methods
+    // ========== DataAdapter Interface (Modern shared_ptr wrapper) ==========
+    // These methods provide a modern shared_ptr interface while delegating to
+    // the underlying PandoraBoxAdapter's raw pointer API
 
-    int get_data_count() const {
-        return data_set_->get_data_count();
+    /**
+     * @brief Get the number of data items
+     */
+    int GetDataCount() const {
+        return data_set_->GetDataCount();
     }
 
-    std::shared_ptr<T> get_data_by_index(int index) {
-        return data_set_->get_data_by_index(index);
+    /**
+     * @brief Get data by index (returns raw pointer wrapped in shared_ptr for safety)
+     */
+    std::shared_ptr<T> GetDataByIndex(int index) {
+        T* raw_ptr = data_set_->GetDataByIndex(index);
+        // Note: We don't own this pointer, so we use a non-deleting shared_ptr
+        return std::shared_ptr<T>(raw_ptr, [](T*){});
     }
 
-    void clear_all_data() {
-        data_set_->clear_all_data();
+    /**
+     * @brief Clear all data
+     */
+    void ClearAllData() {
+        data_set_->ClearAllData();
     }
 
-    void add(std::shared_ptr<T> item) {
-        data_set_->add(item);
+    /**
+     * @brief Add an item
+     */
+    void Add(const T& item) {
+        data_set_->Add(item);
     }
 
-    void add_at(int index, std::shared_ptr<T> item) {
-        data_set_->add_at(index, item);
+    /**
+     * @brief Add an item at specific position
+     */
+    void Add(int pos, const T& item) {
+        data_set_->Add(pos, item);
     }
 
-    void add_items(const std::vector<std::shared_ptr<T>>& items) {
-        data_set_->add_items(items);
+    /**
+     * @brief Add multiple items
+     */
+    void AddAll(const std::vector<T>& collection) {
+        data_set_->AddAll(collection);
     }
 
-    void add_items_at(int index, const std::vector<std::shared_ptr<T>>& items) {
-        data_set_->add_items_at(index, items);
+    /**
+     * @brief Remove an item
+     */
+    void Remove(const T& item) {
+        data_set_->Remove(item);
     }
 
-    void remove_item(std::shared_ptr<T> item) {
-        data_set_->remove_item(item);
+    /**
+     * @brief Remove item at position
+     */
+    void RemoveAtPos(int position) {
+        data_set_->RemoveAtPos(position);
     }
 
-    void remove_item_at(int index) {
-        data_set_->remove_item_at(index);
+    /**
+     * @brief Replace item at position if exists
+     */
+    bool ReplaceAtPosIfExist(int position, const T& item) {
+        return data_set_->ReplaceAtPosIfExist(position, item);
     }
 
-    void remove_items(int start, int count) {
-        data_set_->remove_items(start, count);
+    /**
+     * @brief Set data collection
+     */
+    void SetData(const std::vector<T>& collection) {
+        data_set_->SetData(collection);
     }
 
-    void set_item(int index, std::shared_ptr<T> item) {
-        data_set_->set_item(index, item);
-    }
-
-    int index_of(std::shared_ptr<T> item) const {
-        return data_set_->index_of(item);
-    }
-
-    bool contains(std::shared_ptr<T> item) const {
-        return data_set_->contains(item);
-    }
-
-    std::vector<std::shared_ptr<T>> get_all_data() const {
-        return data_set_->get_all_data();
+    /**
+     * @brief Find index of item
+     */
+    int IndexOf(const T& item) const {
+        return data_set_->IndexOf(item);
     }
 
 protected:
